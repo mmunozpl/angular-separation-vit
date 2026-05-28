@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: >-
+  Si utiliza este software, por favor cítelo como se indica a
+  continuación.
+title: >-
+  Separación angular máxima en Transformers de visión: códigos
+  esféricos para atención diversa y detección generalizable de
+  medios sintéticos
+abstract: >-
+  Implementación y validación de tres piezas: (1) generación de
+  códigos esféricos por descenso de gradiente proyectado sobre la
+  energía de Riesz en S^{d-1}, validada contra el kissing number;
+  (2) un regularizador de atención angularmente diversa sobre las
+  direcciones representativas de las cabezas de un ViT; y (3) una
+  cabeza de prototipos por generador anclada a un código esférico,
+  con rechazo en conjunto abierto, para la detección de imagen
+  sintética sobre GenImage en régimen leave-one-generator-out.
+type: software
+authors:
+  - given-names: Manuel
+    family-names: Muñoz Plá
+    email: mmunozpl@uoc.edu
+version: 1.0.0
+date-released: "2026-05-28"
+license: Apache-2.0
+keywords:
+  - vision transformer
+  - separación angular
+  - códigos esféricos
+  - energía de Riesz
+  - kissing number
+  - detección de medios sintéticos
+  - conjunto abierto
+  - GenImage

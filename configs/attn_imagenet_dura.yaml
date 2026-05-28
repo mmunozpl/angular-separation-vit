@@ -1,0 +1,44 @@
+# Tabla 2 fila 3: variante dura del código de atención.
+# las direcciones representativas se fijan al código esférico y se
+# reproyectan tras cada optimizer.step() (paper §659-661).
+
+seed: 42
+
+dataset:
+  name: imagenet100
+  root: /media/manpla/Pruebas/Imagenet
+  train_subdir: train_blurred
+  val_subdir: val_blurred
+  num_classes: 100               # se ignora si wnids_file está
+  wnids_file: configs/imagenet100_cmc.txt  # canónica CMC
+  image_size: 224
+  num_workers: 8
+
+model:
+  name: vit_base_patch16_224
+  pretrained: true
+  num_heads: 12
+  num_layers: 12
+  embed_dim: 768
+
+loss:
+  ce_label_smoothing: 0.1
+  # con hard_variant la diversidad se impone por construcción (no por
+  # gradiente). R_div es redundante; lambda=0 evita contribuir ruido.
+  lambda_div: 0.0
+  hard_variant: true        # ← variante dura
+
+code:
+  path: artifacts/codes/heads_vitb_layer.pt
+
+optimization:
+  optimizer: adamw
+  lr: 1.0e-4
+  weight_decay: 0.05
+  batch_size: 128
+  epochs: 30
+  warmup_epochs: 3
+
+device: cuda
+log_dir: artifacts/logs/attn_dura
+checkpoint_dir: artifacts/checkpoints/attn_dura

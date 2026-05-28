@@ -1,0 +1,42 @@
+# sanity mini para verificar los nuevos campos del run.csv
+
+seed: 42
+
+dataset:
+  name: imagenet20_sanity
+  mode: sanity
+  root: /media/manpla/Pruebas/Imagenet
+  val_subdir: val_blurred
+  num_classes: 20
+  val_fraction: 0.1
+  image_size: 224
+  num_workers: 4
+
+model:
+  name: vit_base_patch16_224
+  pretrained: true
+  num_heads: 12
+  num_layers: 12
+  embed_dim: 768
+
+loss:
+  ce_label_smoothing: 0.1
+  # nueva formulación (eq.5 paper): sum sobre pares ordenados × capas
+  lambda_div: 0.001
+  # theta_target_deg desde el código cacheado (95.22° para H=12)
+  hard_variant: false
+
+code:
+  path: artifacts/codes/heads_vitb_layer.pt
+
+optimization:
+  optimizer: adamw
+  lr: 1.0e-4
+  weight_decay: 0.05
+  batch_size: 32
+  epochs: 1
+  warmup_epochs: 0
+
+device: cuda
+log_dir: artifacts/logs/attn_sanity_mini
+checkpoint_dir: artifacts/checkpoints/attn_sanity_mini

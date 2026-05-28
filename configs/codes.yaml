@@ -1,0 +1,33 @@
+# configuración para la generación de códigos esféricos
+
+seed: 42
+
+# pares (d, k) a generar y validar
+#   - los cinco primeros son kissing numbers exactos
+#   - kissing_24 reducido para la prueba rápida; sustituir k a 196560
+#     para la corrida completa
+#   - heads_vitb cubre las direcciones representativas de cabezas
+#   - protos_genimage cubre los M+1 prototipos del detector
+dimensions:
+  - {d: 2,   k: 6,    name: kissing_2}
+  - {d: 3,   k: 12,   name: kissing_3}
+  - {d: 4,   k: 24,   name: kissing_4}
+  - {d: 8,   k: 240,  name: kissing_8}
+  - {d: 24,  k: 4096, name: kissing_24_small}
+  - {d: 768, k: 12,   name: heads_vitb_layer}
+  - {d: 768, k: 9,    name: protos_genimage}
+
+riesz:
+  exponent_s: 1.0  # s = 1 corresponde a la energía electrostática
+
+optimization:
+  lr: 0.05
+  steps: 6000
+  log_every: 500
+  device: cuda
+
+output_dir: artifacts/codes
+
+validation:
+  expected_theta_deg: 60.0
+  tolerance_deg: 1.5  # tolerancia para los kissing numbers exactos

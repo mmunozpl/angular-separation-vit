@@ -1,0 +1,1187 @@
+% =====================================================================
+%  Borrador para arXiv -- preprint
+%  Separacion angular maxima en Transformers de vision
+%  Compatible con pdfLaTeX, XeLaTeX y LuaLaTeX (Overleaf)
+%  estado: borrador a falta de resultados experimentales
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+
+% --- motor y codificacion -------------------------------------------
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+\else
+  \usepackage{fontspec}
+\fi
+% es-noshorthands evita el conflicto de < y > con TikZ
+\usepackage[spanish,es-tabla,es-noindentfirst,es-noshorthands]{babel}
+
+% --- geometria y tipografia -----------------------------------------
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{microtype}
+\usepackage{lmodern}
+\usepackage{setspace}
+
+% --- matematicas -----------------------------------------------------
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+
+% --- figuras, tablas, algoritmos ------------------------------------
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathreplacing}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\floatname{algorithm}{Algoritmo}
+\renewcommand{\listalgorithmname}{Lista de algoritmos}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+
+% --- referencias cruzadas -------------------------------------------
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+\crefname{algorithm}{algoritmo}{algoritmos}
+\Crefname{algorithm}{Algoritmo}{Algoritmos}
+\crefname{equation}{ecuación}{ecuaciones}
+\Crefname{equation}{Ecuación}{Ecuaciones}
+\crefname{section}{sección}{secciones}
+\Crefname{section}{Sección}{Secciones}
+\crefname{figure}{figura}{figuras}
+\Crefname{figure}{Figura}{Figuras}
+\crefname{table}{tabla}{tablas}
+\Crefname{table}{Tabla}{Tablas}
+\crefname{proposition}{proposición}{proposiciones}
+\Crefname{proposition}{Proposición}{Proposiciones}
+
+% --- entornos de teorema --------------------------------------------
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposición}
+\newtheorem{definition}{Definición}
+
+% --- marca de contenido pendiente -----------------------------------
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[PENDIENTE: #1]}}}
+\newcommand{\Sph}{\mathbb{S}}
+\newcommand{\Rset}{\mathbb{R}}
+
+\title{\textbf{Separación angular máxima en Transformers de visión:\\
+códigos esféricos para una atención diversa y una\\
+detección generalizable de medios sintéticos}}
+
+\author{Manuel Muñoz Plá\\
+  \small Investigador independiente --- Mairena del Aljarafe, Sevilla, España\\
+  \small ORCID: 0009-0000-5714-912X \quad\textbar\quad
+  \texttt{mmunozpl@uoc.edu}}
+
+\date{Borrador --- \today}
+
+% =====================================================================
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+La atención multi-cabeza de los Transformers de visión tiende a
+acomodar varias cabezas sobre patrones redundantes, y los detectores de
+medios sintéticos pierden exactitud frente a generadores no observados
+durante el entrenamiento. Ambos problemas comparten una raíz geométrica:
+la disposición de un conjunto de direcciones en el espacio de
+representación. Este trabajo propone gobernar esa disposición mediante
+\emph{códigos esféricos} ---conjuntos de direcciones unitarias sobre la
+hiperesfera con separación angular mínima maximizada--- y deriva dos
+contribuciones. La primera regulariza las direcciones representativas de
+las cabezas de atención hacia una configuración de máxima separación,
+con el objetivo de reducir la redundancia entre cabezas sin alterar la
+arquitectura ni añadir parámetros. La segunda fija los prototipos de un
+clasificador por generador sobre un código esférico, de modo que el
+espacio angular no ocupado denota un margen explícito para el rechazo de
+generadores nuevos en régimen de conjunto abierto. El marco se ancla en
+el fenómeno de \emph{neural collapse} y emplea el \emph{kissing number}
+como caso exacto de validación geométrica. La evaluación, aún
+pendiente, contempla ImageNet para la diversidad de atención y el
+conjunto GenImage con protocolo \emph{leave-one-generator-out} para la
+detección generalizable. \todo{cifras del resumen tras los
+experimentos}
+\\[4pt]
+\noindent\textbf{Palabras clave:} códigos esféricos, separación angular,
+atención multi-cabeza, neural collapse, detección de medios sintéticos,
+conjunto abierto.
+\end{abstract}
+
+% =====================================================================
+\section{Introducción}
+\label{sec:intro}
+
+El Transformer de visión ha desplazado a la red convolucional como
+arquitectura de referencia en clasificación de imagen, y su mecanismo de
+atención multi-cabeza se presenta habitualmente como una vía para que el
+modelo atienda, en paralelo, a distintas relaciones espaciales. La
+evidencia empírica matiza esa lectura: una parte de las cabezas
+converge sobre patrones de atención casi indistinguibles, de manera que
+la capacidad nominal de la capa no se traduce en diversidad efectiva.
+Podar cabezas tras el entrenamiento apenas degrada la exactitud, lo que
+denota que la redundancia no es marginal sino estructural.
+
+En un dominio aparentemente alejado, la detección de medios sintéticos
+afronta un problema distinto pero igual de persistente. Un detector
+entrenado sobre las imágenes de un conjunto de generadores alcanza una
+exactitud elevada dentro de ese conjunto y la pierde al enfrentarse a un
+generador no observado. El problema abierto del campo no es la
+exactitud intradominio, ya saturada, sino la generalización a
+arquitecturas generativas nuevas, que aparecen a un ritmo que ningún
+conjunto de entrenamiento cerrado puede seguir.
+
+Estos dos problemas, la redundancia de la atención y la fragilidad ante
+lo no observado, comparten una raíz que no es evidente a primera vista:
+en ambos casos lo que está en juego es \emph{cómo se disponen un
+conjunto de direcciones} en un espacio de representación. Las cabezas de
+atención pueden caracterizarse por una dirección representativa; las
+clases o los generadores, por la dirección del prototipo que el modelo
+les asigna. Cuando esas direcciones se amontonan, la capacidad se
+desaprovecha y las fronteras de decisión se vuelven frágiles. Cuando se
+separan al máximo, cada elemento ocupa una región propia y bien aislada,
+y el espacio sobrante queda disponible para lo que el entrenamiento no
+preveía.
+
+La geometría que formaliza esa disposición ideal es la de los
+\emph{códigos esféricos}: conjuntos de direcciones unitarias sobre la
+hiperesfera elegidos de modo que el menor de los ángulos entre pares sea
+lo mayor posible. Su caso límite ---el número máximo de direcciones que
+admiten una separación angular dada--- es el \emph{kissing number},
+un objeto clásico de la geometría de empaquetamientos. Y su contrapartida
+en redes neuronales es el fenómeno de \emph{neural collapse}: las
+direcciones de clase, sin instrucción explícita, se separan al final del
+entrenamiento hasta configurar un marco equiangular. La idea de este
+trabajo es no esperar a que la red descubra esa configuración, sino
+entregársela fijada de antemano.
+
+\paragraph{Contribuciones.} El trabajo desarrolla dos intervenciones
+geométricas sobre el Transformer de visión y un protocolo de evaluación:
+
+\begin{enumerate}
+\item Un \textbf{regularizador de atención angularmente diversa}
+(\cref{sec:metA}) que conduce las direcciones representativas de las
+cabezas hacia una configuración de separación angular máxima, sin
+modificar la arquitectura ni incrementar el número de parámetros.
+\item Una \textbf{cabeza de prototipos por generador}
+(\cref{sec:metB}) cuyas direcciones de clase se fijan sobre un código
+esférico, de modo que el espacio angular no asignado actúa como región
+de rechazo para generadores no observados, tratando la detección de
+medios sintéticos como un problema de conjunto abierto.
+\item Un \textbf{protocolo de validación geométrica}
+(\cref{sec:metcodes}) que verifica el procedimiento de generación de
+códigos contra las configuraciones óptimas conocidas en las dimensiones
+$2,3,4,8$ y $24$, y un \textbf{protocolo de evaluación}
+(\cref{sec:setup}) con separación \emph{leave-one-generator-out} sobre
+el conjunto GenImage.
+\end{enumerate}
+
+% =====================================================================
+\section{Trabajo relacionado}
+\label{sec:related}
+
+\paragraph{Códigos esféricos y empaquetamientos.}
+La distribución de puntos sobre la esfera con separación máxima es un
+problema clásico, planteado en su forma física por Thomson y en su forma
+geométrica por Tammes. El \emph{kissing number} ---el mayor número de
+esferas unitarias que pueden tocar a una esfera central sin solaparse---
+se conoce de forma exacta solo en las dimensiones $1,2,3,4,8$ y $24$,
+estas dos últimas gracias a los retículos $E_8$ y de Leech
+\cite{conway1999}. Para dimensiones y cardinalidades arbitrarias se
+recurre a códigos casi óptimos obtenidos por minimización de energías de
+repulsión \cite{saff1997}.
+
+\paragraph{Neural collapse y clasificadores fijos.}
+El fenómeno de \emph{neural collapse} \cite{papyan2020} describe cómo,
+en la fase final del entrenamiento, las medias de clase y los vectores
+del clasificador convergen a un marco equiangular ajustado. Trabajos
+posteriores \cite{zhu2021} lo analizan bajo el modelo de
+características no restringidas. Esta regularidad ha motivado el uso de
+clasificadores \emph{fijos} con geometría predeterminada
+\cite{pernici2021}, que ahorran parámetros y estabilizan el
+entrenamiento. El presente trabajo se sitúa en esa línea, pero sustituye
+el marco equiangular por un código esférico general y lo extiende a las
+proyecciones de atención.
+
+\paragraph{Márgenes angulares.}
+SphereFace \cite{liu2017}, CosFace \cite{wang2018} y ArcFace
+\cite{deng2019} introdujeron márgenes sobre el ángulo entre la
+característica y el prototipo de clase. Estos métodos operan sobre una
+geometría angular, pero estiman los prototipos durante el entrenamiento;
+aquí los prototipos se fijan con separación garantizada.
+
+\paragraph{Redundancia de la atención multi-cabeza.}
+El análisis de la atención multi-cabeza ha mostrado que muchas cabezas
+son prescindibles \cite{michel2019} y que cumplen funciones
+especializadas e identificables \cite{voita2019}. La diversidad entre
+cabezas se ha promovido habitualmente con penalizaciones \emph{ad hoc};
+este trabajo la encuadra como un problema de separación angular sobre la
+hiperesfera.
+
+\paragraph{Detección de imagen sintética.}
+La detección de imagen generada por modelos generativos
+\cite{wang2020cnn} y, más recientemente, por modelos de difusión
+\cite{corvi2023} se enfrenta a una caída de exactitud al cambiar de
+generador. El conjunto GenImage \cite{zhu2023genimage} reúne imágenes de
+múltiples generadores y habilita la evaluación de generalización a
+arquitecturas no observadas; estrategias como DRCT \cite{chen2024drct}
+abordan explícitamente esa transferencia. Ninguna de estas líneas trata
+la detección como un problema geométrico de conjunto abierto sobre un
+código esférico, que es la posición de este trabajo.
+
+% =====================================================================
+\section{Marco teórico}
+\label{sec:theory}
+
+\subsection{La hiperesfera: una intuición previa}
+\label{sec:theory:intuition}
+
+Cuando varios elementos idénticos que se repelen quedan confinados sobre
+una superficie cerrada, no se distribuyen al azar: se acomodan hasta
+alcanzar el reposo en que la fuerza neta se anula. Los electrones sobre
+una esfera conductora ---el problema que Thomson planteó en 1904--- y las
+semillas en el capítulo del girasol obedecen al mismo principio: cada
+elemento ocupa la posición que maximiza su distancia angular a los
+demás. Ese reposo no es un acto de cómputo, sino el residuo de una
+repulsión que se ha dejado actuar hasta el final. De un proceso
+enteramente continuo emergen, sin embargo, cantidades enteras ---los doce
+vecinos del empaquetamiento tridimensional, los términos de Fibonacci de
+la espiral---; el número de elementos no se impone desde fuera, sino que
+queda inscrito en la geometría del acomodo. Una red neuronal, al separar
+sus clases en el espacio de representación, reproduce ese mismo reposo:
+las direcciones asociadas a cada clase se distancian entre sí hasta
+configurar una disposición de separación angular máxima, fenómeno que la
+literatura reciente denota con el término \emph{neural collapse}. La
+diferencia con los sistemas físicos abre una oportunidad: donde la
+naturaleza requiere todo el proceso de relajación para alcanzar esa
+configuración, un modelo puede recibirla fijada de antemano. Las páginas
+siguientes formalizan esa configuración sobre la hiperesfera unitaria
+$\Sph^{d-1}$ y precisan la noción de separación angular mínima entre
+pares de direcciones.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[scale=2.7,>=Stealth]
+  \def\R{1}
+  % gran circulo de la hiperesfera
+  \draw[thick,gray!70] (0,0) circle (\R);
+  \draw[dashed,gray!45] (0,0) ellipse ({\R} and 0.34);
+  \fill (0,0) circle (0.55pt);
+  \node[font=\footnotesize] at (0.12,-0.12) {$O$};
+  % direcciones de clase
+  \foreach \a in {35,80,150,205,265,315}{
+     \draw[->,thick,gray!55] (0,0)--(\a:\R);
+     \fill[black] (\a:\R) circle (1.35pt);
+  }
+  % par con separacion angular minima resaltado
+  \draw[->,very thick,blue!70!black] (0,0)--(35:\R);
+  \draw[->,very thick,blue!70!black] (0,0)--(80:\R);
+  \draw[thick,blue!70!black] (35:0.40) arc (35:80:0.40);
+  \node[blue!70!black,font=\footnotesize] at (57:0.60) {$\theta_{\min}$};
+  \node[font=\footnotesize] at (35:1.16) {$\bm{u}_i$};
+  \node[font=\footnotesize] at (80:1.16) {$\bm{u}_j$};
+\end{tikzpicture}
+\caption{Esquema bidimensional de un código esférico sobre
+$\Sph^{d-1}$. Cada dirección unitaria $\bm{u}_i$ corresponde a una
+clase, una cabeza de atención o un generador. La calidad del código se
+mide por la separación angular mínima $\theta_{\min}$, el menor de los
+ángulos entre pares; un buen código la maximiza.}
+\label{fig:sphere}
+\end{figure}
+
+\subsection{Códigos esféricos y separación angular}
+\label{sec:theory:codes}
+
+\begin{definition}[Código esférico]
+Un código esférico de tamaño $K$ en dimensión $d$ es un conjunto
+$\mathcal{C}=\{\bm{u}_1,\dots,\bm{u}_K\}\subset\Sph^{d-1}$ de
+direcciones unitarias. Su separación angular mínima es
+\begin{equation}
+\theta_{\min}(\mathcal{C})
+  = \min_{i\neq j}\ \arccos\!\big(\langle \bm{u}_i,\bm{u}_j\rangle\big).
+\end{equation}
+\end{definition}
+
+El objetivo es hallar $\mathcal{C}^\star$ que maximice
+$\theta_{\min}$. El mínimo sobre pares no es diferenciable, por lo que en
+la práctica se optimiza una energía de repulsión equivalente. Para un
+exponente $s>0$, la energía de Riesz
+\begin{equation}
+E_s(\mathcal{C})
+  = \sum_{i\neq j}\ \lVert \bm{u}_i-\bm{u}_j\rVert^{-s}
+\label{eq:riesz}
+\end{equation}
+penaliza la proximidad entre direcciones; sus mínimos aproximan, al
+crecer $s$, las configuraciones de separación angular máxima
+\cite{saff1997}. La minimización de \cref{eq:riesz} sobre la hiperesfera
+admite descenso de gradiente proyectado y constituye el procedimiento de
+generación de códigos de \cref{sec:metcodes}.
+
+\subsection{El kissing number como caso exacto}
+\label{sec:theory:kissing}
+
+El \emph{kissing number} $\tau(d)$ es el mayor número de esferas
+unitarias que pueden tocar simultáneamente a una esfera unitaria central
+sin solaparse entre sí. Se conoce de forma exacta solo en dimensiones
+contadas: $\tau(2)=6$, $\tau(3)=12$, $\tau(4)=24$, $\tau(8)=240$ y
+$\tau(24)=196\,560$ \cite{conway1999}. La conexión con los códigos
+esféricos es directa.
+
+\begin{proposition}[Cota de capacidad angular]
+\label{prop:kissing}
+El número máximo de direcciones unitarias en $\Rset^d$ con separación
+angular mínima mayor o igual que $\pi/3$ es exactamente el kissing
+number $\tau(d)$.
+\end{proposition}
+
+\begin{proof}[Justificación]
+Para dos direcciones unitarias,
+$\lVert\bm{u}_i-\bm{u}_j\rVert^2 = 2-2\cos\theta_{ij}$, de modo que
+$\theta_{ij}\ge\pi/3$ equivale a
+$\cos\theta_{ij}\le\tfrac12$ y a
+$\lVert\bm{u}_i-\bm{u}_j\rVert\ge 1$. Las bolas de radio $\tfrac12$
+centradas en los extremos $\bm{u}_i$ no se solapan y todas son tangentes
+a la esfera de radio $\tfrac12$ centrada en el origen; su número máximo
+es, por definición, $\tau(d)$ \cite{conway1999}.
+\end{proof}
+
+\Cref{prop:kissing} delimita el papel del kissing number en este
+trabajo. No es la herramienta operativa ---las dimensiones reales del
+modelo no son $8$ ni $24$, ni la cardinalidad de clases coincide con un
+$\tau(d)$---, sino el caso exacto que enmarca el objeto general. El
+código esférico es lo que la red emplea; el kissing number es la
+referencia contra la que se valida el procedimiento que lo genera y la
+cota que acota su capacidad.
+
+\subsection{Dos regímenes: holgado y saturado}
+\label{sec:theory:regimes}
+
+La separación angular alcanzable por un código de $K$ direcciones en
+$\Sph^{d-1}$ depende de la relación entre $K$ y $d$, y conviene
+distinguir dos regímenes porque el modelo opera en uno solo de ellos.
+
+\paragraph{Régimen holgado ($K\le d+1$).} Cuando el número de
+direcciones no supera $d+1$, existe el \emph{símplex regular}: la
+configuración en que todos los pares forman el mismo ángulo, máximo
+posible. Sumando las $K$ direcciones unitarias y observando que la
+norma al cuadrado es no negativa,
+\begin{equation}
+0 \le \Big\lVert \textstyle\sum_h \bm{u}_h \Big\rVert^2
+  = K + \sum_{h\neq h'}\langle\bm{u}_h,\bm{u}_{h'}\rangle,
+\label{eq:simplex}
+\end{equation}
+se obtiene, para una configuración equiangular de ángulo $\theta$, la
+cota $\cos\theta \ge -1/(K-1)$, alcanzada con igualdad por el símplex:
+\begin{equation}
+\theta_{\mathrm{símplex}}(K)
+  = \arccos\!\big(-\tfrac{1}{K-1}\big).
+\label{eq:simplexangle}
+\end{equation}
+Esta separación óptima depende solo de $K$, no de $d$: una vez que la
+dimensión alcanza $d=K-1$, añadir más dimensiones deja espacio sin usar
+pero no mejora el ángulo. La \cref{eq:simplexangle} es decreciente en
+$K$ y está acotada en $(\pi/2,\,\pi]$ ---$180^\circ$ para $K=2$,
+$120^\circ$ para $K=3$, y tendiendo a $90^\circ$ por arriba al crecer
+$K$, sin alcanzarlo nunca---. El régimen holgado vive, por tanto,
+enteramente en ángulos obtusos.
+
+\paragraph{Régimen saturado ($K>d+1$).} Cuando las direcciones superan
+$d+1$, el símplex regular deja de existir: no caben tantas direcciones
+equiangulares en el espacio disponible. La separación óptima cae por
+debajo de $90^\circ$ y la dimensión pasa a ser la restricción activa.
+El kissing number es el punto señalado de este régimen ---$K=\tau(d)$
+direcciones a exactamente $60^\circ$ (\cref{prop:kissing})---; densidades
+mayores producen ángulos aún menores.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[scale=1.0,>=Stealth]
+  % --- panel izquierdo: regimen holgado, K=3 en 2D, 120 grados ---
+  \begin{scope}[shift={(0,0)}]
+    \def\R{1.5}
+    \draw[gray!55] (0,0) circle (\R);
+    \foreach \a in {90,210,330}{
+       \draw[->,very thick,blue!65!black] (0,0)--(\a:\R);
+       \fill[blue!65!black] (\a:\R) circle (2pt);
+    }
+    % arco del angulo entre dos direcciones
+    \draw[blue!65!black] (90:0.5) arc (90:210:0.5);
+    \node[blue!65!black,font=\scriptsize] at (150:0.74) {$120^\circ$};
+    \node[font=\scriptsize,align=center] at (0,-2.15)
+      {holgado: $K{=}3\le d{+}1$\\símplex, ángulo obtuso};
+  \end{scope}
+  % --- panel derecho: regimen saturado, K=6 en 2D, 60 grados ---
+  \begin{scope}[shift={(5.4,0)}]
+    \def\R{1.5}
+    \draw[gray!55] (0,0) circle (\R);
+    \foreach \a in {0,60,120,180,240,300}{
+       \draw[->,very thick,red!70!black] (0,0)--(\a:\R);
+       \fill[red!70!black] (\a:\R) circle (2pt);
+    }
+    \draw[red!70!black] (0:0.5) arc (0:60:0.5);
+    \node[red!70!black,font=\scriptsize] at (30:0.74) {$60^\circ$};
+    \node[font=\scriptsize,align=center] at (0,-2.15)
+      {saturado: $K{=}6=\tau(2)$\\kissing number, ángulo $60^\circ$};
+  \end{scope}
+\end{tikzpicture}
+\caption{Los dos regímenes en dimensión $d{=}2$, donde la
+configuración es exacta y representable. Con pocas direcciones para el
+espacio disponible (izquierda, $K{=}3$) el símplex las separa al
+máximo, en ángulo obtuso. Al saturar el espacio (derecha, $K{=}6$, el
+kissing number de $d{=}2$) la separación colapsa a $60^\circ$. El mismo
+contraste se da en $d{=}3$ ---tetraedro a $109{,}5^\circ$ frente a
+cuboctaedro a $60^\circ$--- y en toda dimensión.}
+\label{fig:regimes}
+\end{figure}
+
+\paragraph{El modelo opera en régimen holgado.} Las dos intervenciones
+de este trabajo se sitúan con holgura en el primer régimen. Las cabezas
+de atención de un ViT-B/16 son $H=12$ direcciones y los prototipos de
+generador son $K=M+1$ direcciones ---del orden de la decena---, ambos
+embebidos en $d=768$. Dado que $12\ll 768$ y $M+1\ll 768$, la dimensión
+no es restrictiva. Conviene, sin embargo, distinguir dos variantes del
+régimen holgado según la naturaleza de las direcciones.
+
+Los prototipos de generador (\cref{sec:metB}) son direcciones con
+orientación definida, y su separación óptima es la del símplex con
+signo, $\arccos(-1/(M))\approx 97^\circ$. Las direcciones
+representativas de las cabezas (\cref{sec:metA}), en cambio, se definen
+como el primer vector singular de $\bm{W}_O^{(h)}$, un objeto
+\emph{definido salvo signo}: $\bm{u}_1$ y $-\bm{u}_1$ representan la
+misma dirección. Para tales objetos el ángulo con signo no es una
+magnitud bien definida, y la separación que sí lo es ---invariante al
+signo--- vive en $[0^\circ,90^\circ]$ y vale, para el símplex de $K$
+vectores singulares, $\theta^\star_{\mathrm{u}}(K)=\arccos(1/(K-1))$.
+Para las $H=12$ cabezas,
+$\theta^\star_{\mathrm{u}}=\arccos(1/11)\approx 84{,}8^\circ$ ---el
+complementario de los $95{,}2^\circ$ del símplex con signo---. Este es
+el valor objetivo $\theta^\star$ del regularizador de \cref{sec:metA}.
+El símplex de $12$ vectores no admite, en efecto, ninguna orientación
+de signos que deje todos los cosenos mutuos negativos, por lo que el
+régimen sin signo no es una elección sino la única descripción
+coherente de la separación entre cabezas.
+
+Ninguno de los dos casos toca los $60^\circ$ del kissing number, que
+corresponden al régimen saturado y solo intervienen en la validación
+geométrica de \cref{sec:metcodes}, donde los códigos esféricos,
+generados con orientación definida, sí se miden con signo.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[>=Stealth]
+  % --- ejes ---
+  \def\xa{0}\def\xb{8.4}     % K mapeado: 2..84
+  \def\ya{0}\def\yb{4.6}     % theta mapeado: 88..184
+  % funciones de mapeo: K en [2,84] -> x ; theta en [88,184] -> y
+  % x = (K-2)/82 * 8.4 ; y = (theta-88)/96 * 4.6
+  \draw[->] (\xa,\ya) -- (\xb+0.6,\ya)
+       node[right,font=\footnotesize] {$K$};
+  \draw[->] (\xa,\ya) -- (\xa,\yb+0.3)
+       node[above,font=\footnotesize] {$\theta_{\mathrm{símplex}}$};
+  % --- asintota en 90 grados ---
+  % y(90) = (90-88)/96*4.6 = 0.0958
+  \draw[dashed,gray!65] (\xa,0.096) -- (\xb,0.096)
+       node[right,font=\scriptsize,gray!55] {$90^\circ$};
+  % --- marcas del eje y ---
+  \foreach \t/\ty in {90/0.096,120/1.534,150/2.971,180/4.408}{
+     \draw (\xa-0.07,\ty)--(\xa+0.07,\ty);
+     \node[left,font=\scriptsize] at (\xa-0.1,\ty) {$\t^\circ$};
+  }
+  % --- marcas del eje x ---
+  \foreach \k/\kx in {3/0.102,12/1.024,40/3.892,80/7.700}{
+     \draw (\kx,\ya-0.07)--(\kx,\ya+0.07);
+     \node[below,font=\scriptsize] at (\kx,\ya-0.1) {\k};
+  }
+  % --- curva theta_simplex(K), puntos calculados ---
+  \draw[very thick,blue!65!black] plot[smooth] coordinates {
+    (0.000,4.408) (0.102,1.534) (0.205,1.030) (0.307,0.790)
+    (0.410,0.649) (0.614,0.490) (1.024,0.346) (1.844,0.241)
+    (3.892,0.166) (7.700,0.132) };
+  % --- punto K=12 sobre la curva con signo: 95,2 grados ---
+  \fill[blue!65!black] (1.024,0.346) circle (2.4pt);
+  \draw[blue!65!black,thin] (1.024,0.346)
+       -- ++(0.7,0.7)
+       node[right,font=\scriptsize,align=left]
+       {$K{=}12$: símplex con signo\\$\approx\!95{,}2^\circ$};
+\end{tikzpicture}
+\caption{Separación angular óptima del símplex con signo
+$\theta_{\mathrm{símplex}}(K)=\arccos(-1/(K-1))$ en función del número
+de direcciones $K$, válida en régimen holgado ($K\le d+1$). La curva
+decrece de forma monótona desde $180^\circ$ y se aproxima
+asintóticamente a $90^\circ$ sin alcanzarlo: en este régimen la
+separación óptima con signo es siempre obtusa. El punto azul marca el
+caso $K{=}12$ ($\approx95{,}2^\circ$), aplicable a los prototipos de
+generador y a la validación de códigos. Las direcciones
+representativas de las cabezas de atención, en cambio, son vectores
+singulares sin signo: su separación óptima es la reflexión respecto a
+$90^\circ$ de la curva, $\arccos(1/(K-1))$, que para $K{=}12$ vale
+$\approx84{,}8^\circ$.}
+\label{fig:simplexcurve}
+\end{figure}
+
+\subsection{Conexión con neural collapse}
+\label{sec:theory:nc}
+
+El fenómeno de \emph{neural collapse} \cite{papyan2020} establece que,
+al final del entrenamiento, los vectores del clasificador de un modelo
+bien entrenado convergen a un marco equiangular ajustado: una
+configuración de separación angular máxima para $K\le d+1$ clases. La
+red, por tanto, tiende espontáneamente hacia el código esférico. Las dos
+contribuciones de este trabajo parten de esa observación y la
+anticipan: en lugar de esperar a que la geometría emerja del proceso de
+relajación, se fija o se regulariza desde el inicio. En el régimen
+holgado en que opera el modelo (\cref{sec:theory:regimes}) esa
+disposición óptima es la del símplex regular; el marco equiangular del
+\emph{neural collapse} y el código esférico de Riesz coinciden ahí
+numéricamente, observación que la \cref{sec:setup} retoma al describir
+las ablaciones.
+
+% =====================================================================
+\section{Método}
+\label{sec:method}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  block/.style={draw,rounded corners,align=center,
+    minimum height=11mm,minimum width=17mm,font=\footnotesize},
+  every node/.style={font=\footnotesize}]
+  \node[block] (img) {Imagen};
+  \node[block,right=8mm of img] (patch) {Patch\\embedding};
+  \node[block,right=8mm of patch,fill=blue!6] (enc)
+       {Encoder ViT\\$L$ bloques};
+  \node[block,right=8mm of enc] (cls) {Embedding\\\texttt{[CLS]}\;$\bm{z}$};
+  \node[block,right=8mm of cls,fill=blue!6] (head)
+       {Cabeza de\\prototipos};
+  \node[block,right=8mm of head] (out) {Logits\\+ rechazo};
+  \foreach \a/\b in {img/patch,patch/enc,enc/cls,cls/head,head/out}
+     {\draw[->] (\a)--(\b);}
+  % llamada A: atencion angularmente diversa
+  \node[block,below=11mm of enc,fill=blue!6,minimum width=30mm]
+       (mha) {Contribución A\\atención angularmente diversa};
+  \draw[->,dashed] (mha)--(enc);
+  % llamada B: prototipos sobre codigo esferico
+  \node[block,below=11mm of head,fill=blue!6,minimum width=30mm]
+       (proto) {Contribución B\\prototipos en código esférico};
+  \draw[->,dashed] (proto)--(head);
+\end{tikzpicture}
+\caption{Visión general. El Transformer de visión recibe dos
+intervenciones geométricas independientes: la contribución A regulariza
+las direcciones de las cabezas de atención dentro del encoder; la
+contribución B fija los prototipos de la cabeza de clasificación sobre
+un código esférico y habilita el rechazo de generadores no observados.}
+\label{fig:overview}
+\end{figure}
+
+\subsection{Generación y validación de códigos esféricos}
+\label{sec:metcodes}
+
+Dado un par $(d,K)$, el código $\mathcal{C}$ se obtiene minimizando la
+energía de Riesz de \cref{eq:riesz} mediante descenso de gradiente
+proyectado sobre $\Sph^{d-1}$: en cada paso el gradiente se proyecta al
+espacio tangente a la hiperesfera, se aplica un paso del optimizador
+Adam y las direcciones se renormalizan a norma unidad.\footnote{El
+optimizador adaptativo y la proyección tangente mejoran la convergencia
+frente al descenso estocástico ingenuo en $d\gg 1$, donde la energía de
+Riesz presenta un paisaje altamente no convexo: los gradientes se
+disparan con pares próximos en la inicialización aleatoria y, sin
+proyección tangente, la dinámica deriva por la componente radial.} El
+procedimiento se resume en \cref{alg:codes}.
+
+\begin{algorithm}[t]
+\caption{Generación de un código esférico por descenso proyectado}
+\label{alg:codes}
+\begin{algorithmic}[1]
+\Require dimensión $d$, tamaño $K$, exponente $s$, pasos $T$, tasa
+inicial $\eta_0$
+\State inicializar $\bm{u}_1,\dots,\bm{u}_K$ aleatorias en $\Sph^{d-1}$
+\State inicializar el optimizador Adam con tasa $\eta_0$
+\State inicializar el planificador \emph{cosine annealing}
+\For{$t = 1$ \textbf{hasta} $T$}
+  \State calcular $\bm{g}_i = \nabla_{\bm{u}_i} E_s$
+         \Comment{energía de repulsión}
+  \State $\bm{g}_i^{\mathrm{tan}}
+         \gets \bm{g}_i - \langle\bm{g}_i,\bm{u}_i\rangle\,\bm{u}_i$
+         \Comment{proyección tangente}
+  \State $\bm{u}_i \gets$ paso de Adam sobre $\bm{u}_i$
+         con $\bm{g}_i^{\mathrm{tan}}$
+  \State $\bm{u}_i \gets \bm{u}_i / \lVert\bm{u}_i\rVert$
+         \Comment{reproyección a la hiperesfera}
+  \State actualizar la tasa con el planificador
+\EndFor
+\State \Return $\mathcal{C}=\{\bm{u}_1,\dots,\bm{u}_K\}$
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Validación geométrica.} Antes de su uso en la red, el
+procedimiento se verifica en las dimensiones de kissing number conocido.
+Para $(d,K)\in\{(2,6),(3,12),(4,24),(8,240),(24,196560)\}$ se comprueba
+que el código recuperado satisface la cota del kissing number,
+$\theta_{\min}\ge\pi/3$, dentro de una tolerancia numérica. Para las
+dimensiones reales del modelo, sin solución exacta, se reporta la brecha
+respecto a las cotas superiores conocidas. Este control de sanidad
+precede a todo experimento con redes y no consume cómputo de GPU.
+
+El descenso desde inicialización aleatoria no recupera, sin embargo,
+todas las configuraciones óptimas. Para $(d,K){=}(4,24)$ se estanca de
+forma reproducible ---verificado sobre seis semillas, cinco valores del
+exponente $s$, ruido térmico recocido e inicialización ortogonal--- en
+un mínimo local con $\theta_{\min}\approx55{,}23^\circ$ y energía a un
+$0{,}007$ por ciento del óptimo de $D_4$: la configuración $D_4$ existe, pero
+su cuenca de atracción desde inicialización aleatoria es demasiado
+estrecha. Para $(d,K){=}(3,12)$ el descenso converge al icosaedro
+regular, con $\theta_{\min}\approx63{,}43^\circ$, en lugar del
+cuboctaedro a $60^\circ$; el icosaedro es más estable bajo la energía
+de Riesz y satisface igualmente la cota del kissing
+($63{,}43^\circ\ge60^\circ$). Por ello, para los pares con
+configuración óptima cerrada conocida ---$D_4$ en $d{=}4$, $E_8$ en
+$d{=}8$, raíces del retículo de Leech en $d{=}24$--- el protocolo
+arranca desde la configuración canónica y verifica que el descenso la
+conserva; para las dimensiones reales del modelo ---$d{=}768$,
+$K\in\{9,12\}$--- la inicialización es aleatoria y la separación
+recuperada se reporta en la \cref{tab:geo}.
+
+\subsection{Contribución A: atención angularmente diversa}
+\label{sec:metA}
+
+Una capa de atención multi-cabeza con $H$ cabezas dispone, para cada
+cabeza $h$, de una proyección de salida
+$\bm{W}_O^{(h)}\in\Rset^{d\times d_h}$. Se define la \emph{dirección
+representativa} de la cabeza $h$ como el primer vector singular
+izquierdo de $\bm{W}_O^{(h)}$:
+\begin{equation}
+\bm{r}_h = \bm{u}_1\!\big(\bm{W}_O^{(h)}\big),
+\qquad
+\bm{u}_1 \;\text{primer vector singular izquierdo},
+\label{eq:headdir}
+\end{equation}
+es decir, la dirección del subespacio de salida en que la cabeza
+deposita más energía. Esta elección no es arbitraria. Un estudio
+preliminar sobre el modelo afinado contrasta dos resúmenes posibles de
+la cabeza ---el primer vector singular y la media normalizada de las
+columnas de $\bm{W}_O^{(h)}$--- frente a una medida directa de
+diversidad funcional: la similitud entre los mapas de atención de cada
+par de cabezas. El primer vector singular correla con esa similitud
+funcional de forma apreciable (coeficiente agregado $\approx0{,}35$
+sobre las doce capas), mientras que la media de columnas resulta
+prácticamente ortogonal al comportamiento de la cabeza (coeficiente
+$\approx0{,}02$).\footnote{El primer vector singular está definido
+salvo signo; la comparación funcional y el regularizador de
+\cref{eq:rdiv} emplean por ello el valor absoluto del producto
+escalar. La correlación, aunque clara en agregado, es parcial: la
+similitud entre mapas de atención está dominada por estructura común
+---atención al token de clase y a los parches vecinos--- y el resumen
+no captura la totalidad de la diversidad funcional.} La media de
+columnas mide la rotación del centroide de $\bm{W}_O^{(h)}$, una
+cantidad que un modelo puede alterar sin modificar sus mapas de
+atención; el primer vector singular capta, en cambio, el subespacio
+dominante de la proyección.
+
+El conjunto $\{\bm{r}_1,\dots,\bm{r}_H\}$ es un código esférico en
+$\Rset^d$. Dado que cada $\bm{r}_h$ es un vector singular, definido
+salvo signo, la intervención añade a la función de pérdida un término
+que empuja ese conjunto hacia la separación angular máxima usando el
+valor absoluto del producto escalar:
+\begin{equation}
+\mathcal{R}_{\mathrm{div}}
+  = \sum_{h\neq h'}
+    \max\!\big(0,\;
+      \lvert\langle\bm{r}_h,\bm{r}_{h'}\rangle\rvert
+      - \cos\theta^\star\big),
+\label{eq:rdiv}
+\end{equation}
+donde $\theta^\star=\arccos(1/(H-1))\approx 84{,}8^\circ$ es la
+separación óptima sin signo del símplex de $H$ vectores singulares
+---el régimen sin signo descrito en \cref{sec:theory:regimes}---. El
+valor absoluto es necesario, no opcional: dos cabezas con vectores
+singulares casi antiparalelos son funcionalmente equivalentes, y el
+producto escalar con signo las leería erróneamente como bien
+separadas. Nótese que $\cos\theta^\star=1/(H-1)>0$, de modo que la
+penalización se anula exactamente cuando las cabezas alcanzan el
+símplex sin signo; no es un umbral estructural. El término penaliza
+únicamente los pares por debajo del objetivo, no impone ninguna
+arquitectura nueva y no añade parámetros entrenables. Se contempla
+además una variante \emph{dura}, en la que la proyección
+$\bm{W}_O^{(h)}$ se somete tras cada paso a una rotación ortogonal que
+alinea su primer vector singular con la dirección asignada del código;
+la comparación entre la variante blanda de \cref{eq:rdiv} y la dura
+forma parte de la ablación de \cref{sec:setup}.
+
+\subsection{Contribución B: prototipos de generador en conjunto abierto}
+\label{sec:metB}
+
+Para la detección de medios sintéticos, el espacio de etiquetas de
+entrenamiento es $\{\text{real}\}\cup\{g_1,\dots,g_M\}$, con $M$
+generadores observados. La cabeza de clasificación asigna a cada
+etiqueta un prototipo unitario, y el conjunto de los $M+1$ prototipos se
+fija sobre un código esférico $\mathcal{C}$ generado por
+\cref{alg:codes}. Dado el embedding \texttt{[CLS]} normalizado
+$\hat{\bm{z}}=\bm{z}/\lVert\bm{z}\rVert$, la puntuación de la clase $k$
+es el coseno $s_k=\langle\hat{\bm{z}},\bm{p}_k\rangle$, y el
+entrenamiento emplea una pérdida de margen angular que atrae cada
+embedding hacia el prototipo de su etiqueta.
+
+\paragraph{Régimen de conjunto abierto.} La separación angular máxima
+entre prototipos deja, entre las celdas de decisión, regiones angulares
+no asignadas a ninguna etiqueta. Una imagen procedente de un generador
+no observado tiende a proyectarse en esas regiones en lugar de invadir
+la celda de la clase \emph{real}. Se definen dos decisiones:
+
+\begin{itemize}
+\item \textbf{Real frente a sintético:} se compara la puntuación del
+prototipo \emph{real} con la mayor puntuación entre los prototipos de
+generador; un margen a favor de los segundos denota imagen sintética.
+\item \textbf{Generador novel:} si $\max_k s_k < \tau$ para un umbral
+$\tau$, la imagen se marca como procedente de un generador no
+catalogado, sin perder la decisión binaria anterior.
+\end{itemize}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[scale=2.7,>=Stealth]
+  \def\R{1}
+  \draw[thick,gray!70] (0,0) circle (\R);
+  \fill (0,0) circle (0.55pt);
+  % prototipos conocidos: real + 4 generadores, separacion maxima
+  \foreach \a/\lab in {90/real,162/$g_1$,234/$g_2$,306/$g_3$,18/$g_4$}{
+     % cono de aceptacion (semiangulo 26 grados)
+     \fill[blue!10]
+        (0,0) -- (\a-26:\R) arc (\a-26:\a+26:\R) -- cycle;
+     \draw[->,thick,blue!65!black] (0,0)--(\a:\R);
+     \fill[blue!65!black] (\a:\R) circle (1.5pt);
+     \node[font=\scriptsize,blue!65!black] at (\a:1.18) {\lab};
+  }
+  % muestra de generador no observado, cae en region no asignada
+  \draw[->,very thick,red!75!black] (0,0)--(126:\R);
+  \fill[red!75!black] (126:\R) circle (1.5pt);
+  \node[font=\scriptsize,red!75!black,align=center]
+       at (126:1.30) {generador\\no observado};
+\end{tikzpicture}
+\caption{Geometría del rechazo en conjunto abierto. Los prototipos de
+las clases conocidas ---\emph{real} y generadores $g_1\dots g_4$---
+ocupan direcciones de separación angular máxima; cada uno define un cono
+de aceptación (sombreado). Una imagen de un generador no observado tiende
+a proyectarse en el espacio angular no asignado y queda fuera de todos
+los conos, lo que habilita su rechazo sin contaminar la celda
+\emph{real}.}
+\label{fig:openset}
+\end{figure}
+
+\subsection{Objetivo de entrenamiento}
+\label{sec:loss}
+
+La función de pérdida combina la tarea, el regularizador de diversidad y
+la clasificación por prototipos:
+\begin{equation}
+\mathcal{L}
+  = \mathcal{L}_{\mathrm{tarea}}
+  + \lambda_A\,\mathcal{R}_{\mathrm{div}}
+  + \lambda_B\,\mathcal{L}_{\mathrm{proto}},
+\label{eq:loss}
+\end{equation}
+con pesos $\lambda_A,\lambda_B\ge 0$. En los experimentos de diversidad
+de atención sobre clasificación de imagen, $\lambda_B=0$ y
+$\mathcal{L}_{\mathrm{tarea}}$ es la entropía cruzada habitual. En los
+experimentos de detección, $\mathcal{L}_{\mathrm{proto}}$ asume el papel
+de clasificador y $\mathcal{R}_{\mathrm{div}}$ se mantiene como término
+opcional cuya aportación se cuantifica por ablación.
+
+% =====================================================================
+\section{Configuración experimental}
+\label{sec:setup}
+
+Esta sección fija el protocolo; los resultados se incorporarán una vez
+ejecutados los experimentos.
+
+\paragraph{Conjuntos de datos.}
+Para la contribución A se emplea ImageNet-100, el subconjunto de 100
+clases de ImageNet. Cien clases aportan riqueza angular suficiente para
+que la diversidad entre cabezas sea medible ---mientras que diez la
+dejarían trivial---, y el fenómeno que la contribución A estudia es
+geométrico: depende de la relación entre el número de cabezas y la
+dimensión del modelo, no del número de clases, por lo que ImageNet-100
+es representativo sin necesidad de la escala completa. Para la
+contribución B se emplea GenImage \cite{zhu2023genimage}, que reúne
+imágenes reales y sintéticas de múltiples generadores, con el protocolo
+\emph{leave-one-generator-out} descrito más abajo; DRCT
+\cite{chen2024drct} se reserva como conjunto de prueba externo, solo en
+inferencia, para medir transferencia.
+
+\paragraph{Protocolo \emph{leave-one-generator-out}.}
+Para cada generador $g$ de GenImage se entrena un detector con las
+imágenes de todos los generadores excepto $g$, y se evalúa la detección
+sobre $g$. La media sobre los $M$ generadores excluidos cuantifica la
+generalización a arquitecturas no observadas, que es el objeto central
+de la contribución B.
+
+\paragraph{Arquitectura y entorno.}
+La columna vertebral es un Transformer de visión ViT-B/16. La
+contribución A parte de pesos preentrenados de ViT-B/16 (\texttt{timm})
+y se afina sobre ImageNet con la pérdida $\mathcal{L}$ de la
+\cref{eq:loss}; el regularizador $\mathcal{R}_{\mathrm{div}}$ actúa así
+como un aditivo geométrico sobre una columna ya competente, lo que
+aísla su efecto mejor que un entrenamiento conjunto desde cero ---que
+con el cómputo disponible no alcanzaría una exactitud competitiva sin
+la receta completa de entrenamiento prolongado---. La contribución B
+parte igualmente de pesos preentrenados y se afina sobre GenImage a una
+resolución de 256\,px, suficiente para preservar los artefactos de alta
+frecuencia de los generadores de difusión. El entorno de cómputo es una
+GPU NVIDIA RTX~5090 de 32\,GB, que admite el ViT-B en una sola tarjeta
+sin recurrir a \emph{gradient checkpointing}.
+
+\paragraph{Métricas.}
+La diversidad de atención se mide por la redundancia entre cabezas
+---similitud media entre las direcciones representativas--- y por la
+entropía de los mapas de atención, además de la exactitud top-1. La
+detección se evalúa por exactitud binaria, AUROC y, en régimen de
+conjunto abierto, por la curva de rechazo de clasificación abierta
+(OSCR) y el AUROC de separación entre clases conocidas y generadores no
+observados. La validación geométrica reporta la separación angular
+alcanzada frente al óptimo conocido.
+
+\paragraph{Ablaciones previstas.}
+(i) Variante blanda (\cref{eq:rdiv}) frente a variante dura del código
+de atención. (ii) Prototipos fijos frente a prototipos inicializados con
+el código y posteriormente afinados. (iii) Código esférico frente a
+inicialización aleatoria; en las dimensiones del modelo ($K\ll d$) el
+código de Riesz coincide numéricamente con el marco equiangular
+ajustado ---ambos con $\theta_{\min}=\arccos(-1/(K-1))$---, por lo que
+esa tercera configuración no se reporta como condición separada. (iv)
+Sensibilidad a los pesos $\lambda_A,\lambda_B$ y al exponente $s$ de la
+energía de Riesz.
+
+% =====================================================================
+\section{Resultados}
+\label{sec:results}
+
+Se reportan a continuación los resultados de la contribución~A sobre
+ImageNet-100. Los de la validación geométrica (\cref{tab:geo}) y la
+contribución~B (\cref{tab:detect}) se incorporarán tras su ejecución.
+
+\subsection{Contribución A: diversidad de atención}
+\label{sec:results:A}
+
+Las tres configuraciones ---base sin regularizador, blanda con
+$\lambda_A=10^{-3}$ y dura por reproyección--- se afinan 30 épocas sobre
+ImageNet-100 desde pesos preentrenados de ViT-B/16. La \cref{tab:divattn}
+resume el estado final y la \cref{fig:thetaevol} la evolución por época.
+
+\begin{table}[h]
+\centering
+\caption{Contribución A sobre ImageNet-100, estado final tras 30 épocas.
+$\theta_{\min}$ es la separación angular mínima sin signo entre cabezas;
+$\bar{s}$ es la similitud funcional media entre mapas de atención.}
+\label{tab:divattn}
+\begin{tabularx}{0.96\linewidth}{X Y Y Y Y}
+\toprule
+Configuración & $\theta_{\min}$ $\uparrow$ &
+Redundancia $\downarrow$ & $\bar{s}$ func. $\downarrow$ &
+Top-1 $\uparrow$ \\
+\midrule
+Base ($\lambda_A=0$)                & $52{,}0^\circ$ & $0{,}175$ &
+$0{,}693$ & $0{,}925$ \\
+Blanda ($\lambda_A=10^{-3}$)        & $85{,}0^\circ$ & $0{,}034$ &
+$0{,}688$ & $\mathbf{0{,}926}$ \\
+Dura (reproyección)                 & $84{,}8^\circ$ & $0{,}091$ &
+--- & $0{,}877$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[>=Stealth]
+  \def\xb{10}\def\yb{5}
+  \draw[->] (0,0)--(\xb+0.4,0) node[right,font=\footnotesize]{época};
+  \draw[->] (0,0)--(0,\yb+0.4)
+       node[above,font=\footnotesize]{$\theta_{\min}$};
+  % marcas y: 45,60,75,90 -> (t-45)/45*5
+  \foreach \t/\ty in {45/0,60/1.667,75/3.333,90/5.0}{
+     \draw (-0.07,\ty)--(0.07,\ty);
+     \node[left,font=\scriptsize] at (-0.1,\ty) {$\t^\circ$};}
+  % marcas x: 1,10,20,30 -> (e-1)/29*10
+  \foreach \e/\ex in {1/0,10/3.103,20/6.552,30/10.0}{
+     \draw (\ex,-0.07)--(\ex,0.07);
+     \node[below,font=\scriptsize] at (\ex,-0.1) {\e};}
+  % objetivo sin signo 84,8 -> 4.422
+  \draw[dashed,gray!55] (0,4.422)--(\xb,4.422)
+       node[right,font=\scriptsize,gray!55]{$\theta^\star$};
+  % dura (clavada)
+  \draw[thick,red!70!black]
+    (0,4.422)--(10,4.422);
+  % blando
+  \draw[very thick,blue!65!black] plot[smooth] coordinates {
+    (0.000,2.900)(0.345,3.156)(0.690,3.389)(1.034,3.722)(1.379,4.122)
+    (1.724,4.411)(2.069,4.433)(2.414,4.444)(3.103,4.444)(3.793,4.444)
+    (4.483,4.433)(5.172,4.444)(5.862,4.456)(6.552,4.444)(7.241,4.444)
+    (7.931,4.444)(8.621,4.444)(9.310,4.444)(10.000,4.444)};
+  % base
+  \draw[thick,gray!60] plot[smooth] coordinates {
+    (0.000,0.389)(0.345,0.511)(0.690,0.633)(1.379,0.644)(2.069,0.711)
+    (2.759,0.822)(3.448,0.844)(4.138,0.833)(4.828,0.800)(5.517,0.822)
+    (6.207,0.789)(6.897,0.778)(7.586,0.756)(8.276,0.778)(8.966,0.767)
+    (10.000,0.767)};
+  \node[font=\scriptsize,blue!65!black] at (8.3,4.72) {blanda};
+  \node[font=\scriptsize,red!70!black] at (8.3,4.16) {dura};
+  \node[font=\scriptsize,gray!60] at (8.3,1.02) {base};
+\end{tikzpicture}
+\caption{Evolución de la separación angular mínima sin signo entre
+cabezas a lo largo del afinado. La base, sin regularizador, se estanca
+en torno a $52^\circ$ ---el techo del \emph{neural collapse}
+espontáneo---. La blanda alcanza el óptimo $\theta^\star\approx84{,}8^\circ$
+hacia la época~6 y lo mantiene. La dura lo impone desde la primera
+época por reproyección.}
+\label{fig:thetaevol}
+\end{figure}
+
+Tres observaciones se desprenden de los datos.
+
+Primero, el afinado por sí solo separa las cabezas, pero solo
+parcialmente: la base alcanza $\theta_{\min}\approx52^\circ$ y se
+estanca, muy por debajo del óptimo de $84{,}8^\circ$. Es el
+\emph{neural collapse} esperado, con un techo que deja redundancia
+angular sin eliminar. Esto justifica que la intervención de la
+contribución~A no sea redundante con el fenómeno espontáneo: el
+\emph{collapse} no llega al óptimo.
+
+Segundo, el regularizador blando alcanza el óptimo del símplex sin
+signo y reduce la redundancia a la mitad ---de $0{,}175$ a
+$0{,}034$--- sin coste en exactitud: el \emph{top-1} de validación
+($0{,}926$) iguala al de la base ($0{,}925$). La separación angular
+máxima entre cabezas es, por tanto, alcanzable sin penalización de
+rendimiento. La variante dura llega a la misma geometría pero degrada
+la exactitud casi cinco puntos ($0{,}877$), lo que denota que
+incentivar la separación mediante un término suave es preferible a
+imponerla por reproyección: el camino hacia la configuración óptima
+importa tanto como la configuración.
+
+Tercero, y con la cautela debida, el efecto sobre la diversidad
+\emph{funcional} de la atención es marginal. La similitud media entre
+mapas de atención apenas desciende ---de $0{,}693$ a $0{,}688$--- y la
+reducción se concentra casi enteramente en las capas tardías
+($-0{,}035$ en la última capa), mientras varias capas intermedias no
+mejoran o empeoran levemente. La separación angular de las direcciones
+de salida $\bm{W}_O$ y la diversidad de comportamiento de la atención
+resultan, así, en gran medida \emph{desacopladas}: reorganizar la
+geometría de $\bm{W}_O$ hacia la máxima separación apenas altera a qué
+atiende cada cabeza. Este desacople es en sí mismo un hallazgo, y
+orienta la continuación natural del trabajo (\cref{sec:discussion}).
+
+\subsection{Validación geométrica y contribución B}
+\label{sec:results:resto}
+
+
+\begin{table}[h]
+\centering
+\caption{Validación geométrica: separación angular recuperada frente a
+la cota del kissing number.}
+\label{tab:geo}
+\begin{tabularx}{0.86\linewidth}{l c c c Y}
+\toprule
+Dimensión $d$ & Tamaño $K$ & Cota kissing ($\theta_{\min}\!\ge$) &
+$\theta_{\min}$ recuperado & Conforme \\
+\midrule
+2  & 6      & $60^\circ$ & \todo{} & \todo{} \\
+3  & 12     & $60^\circ$ & \todo{} & \todo{} \\
+4  & 24     & $60^\circ$ & \todo{} & \todo{} \\
+8  & 240    & $60^\circ$ & \todo{} & \todo{} \\
+24 & 196560 & $60^\circ$ & \todo{} & \todo{} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Contribución B. Detección \emph{leave-one-generator-out} sobre
+GenImage y transferencia a DRCT.}
+\label{tab:detect}
+\begin{tabularx}{0.96\linewidth}{X Y Y Y}
+\toprule
+Configuración & AUROC GenImage (LOGO) $\uparrow$ &
+OSCR $\uparrow$ & AUROC transferencia DRCT $\uparrow$ \\
+\midrule
+Cabeza lineal base                 & \todo{} & \todo{} & \todo{} \\
++ prototipos en código esférico    & \todo{} & \todo{} & \todo{} \\
++ rechazo de conjunto abierto      & \todo{} & \todo{} & \todo{} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\todo{figura de la validación geométrica ---separación alcanzada por
+dimensión--- y figura de las curvas OSCR por generador excluido.}
+
+% =====================================================================
+\section{Discusión y limitaciones}
+\label{sec:discussion}
+
+El marco descansa sobre una distinción que conviene no difuminar. Las
+configuraciones de separación angular máxima solo se conocen de forma
+exacta en dimensiones contadas; en las dimensiones reales del modelo se
+trabaja con códigos casi óptimos, y la brecha respecto al óptimo
+teórico ---cuantificada en \cref{tab:geo}--- denota el margen de
+imprecisión que el método arrastra. El kissing number es el caso ideal
+de referencia, no la herramienta universal.
+
+Una segunda cuestión abierta es si las direcciones del código deben
+fijarse e inmovilizarse o solo inicializar un ajuste posterior. La
+primera opción ofrece el argumento teórico más limpio y el ahorro de
+parámetros; la segunda suele rendir algo más en exactitud. El trabajo no
+prejuzga la respuesta y la traslada a la ablación de \cref{sec:setup}.
+
+Por último, la dirección representativa de una cabeza de atención
+---definida en \cref{eq:headdir} como primer vector singular de
+$\bm{W}_O^{(h)}$--- es un resumen entre varios posibles. La elección se
+apoya en el estudio preliminar de \cref{sec:metA}, que la prefiere
+sobre la media de columnas por su correlación apreciablemente mayor con
+la similitud entre mapas de atención. Esa correlación es, sin embargo,
+parcial: el resumen captura una fracción de la diversidad funcional, no
+su totalidad, y su ventaja sobre la media de columnas no es uniforme
+entre capas. La cuantía con que la regularización de un resumen así
+definido se traduce en diversidad efectiva de la atención es, por
+tanto, una cuestión que la evaluación debe medir, no un hecho que el
+marco garantice.
+
+Los resultados de la \cref{sec:results:A} resuelven esa cuestión en
+sentido matizado: la regularización alcanza el óptimo geométrico sin
+coste de exactitud, pero su efecto sobre la diversidad funcional de la
+atención es marginal. La interpretación más plausible es que la función
+de una cabeza ---a qué atiende--- no reside en la proyección de salida
+$\bm{W}_O$, que solo proyecta de vuelta el resultado, sino en el
+mecanismo que decide la atención, $\mathrm{softmax}(QK^\top)$. Separar
+las direcciones de $\bm{W}_O$ reorganiza la salida sin tocar ese
+mecanismo, de donde el desacople observado. Inducir separación sobre el
+subespacio $Q\cdot K$ ---y el estudio de atribución por componente que
+lo precede--- es la continuación natural de este trabajo; a diferencia
+de $\bm{W}_O$, ese subespacio define una forma bilineal y no un conjunto
+de direcciones, por lo que exige extender el marco más allá de los
+códigos esféricos.
+
+% =====================================================================
+\section{Conclusión}
+\label{sec:conclusion}
+
+El trabajo encuadra dos problemas en apariencia distantes ---la
+redundancia de la atención multi-cabeza y la fragilidad de los
+detectores de medios sintéticos frente a generadores no observados---
+como un único problema geométrico: la disposición de un conjunto de
+direcciones sobre la hiperesfera. Sobre esa base propone un regularizador
+de atención angularmente diversa y una cabeza de prototipos por
+generador anclada en un código esférico, ambos sin coste arquitectónico
+y con el espacio angular no asignado como margen explícito para lo no
+observado. La validación geométrica frente al kissing number y la
+evaluación con protocolo \emph{leave-one-generator-out} quedan
+especificadas; su ejecución determinará el alcance empírico de la
+propuesta.
+
+% =====================================================================
+\section*{Disponibilidad de código y datos}
+\addcontentsline{toc}{section}{Disponibilidad de código y datos}
+El código de generación de códigos esféricos, de las dos intervenciones
+y de los protocolos de evaluación se publicará en un repositorio abierto
+junto con la versión revisada de este preprint. \todo{enlace al
+repositorio y DOI del archivo de pesos}
+
+% =====================================================================
+\begin{thebibliography}{99}
+
+\bibitem{conway1999}
+J.~H. Conway y N.~J.~A. Sloane.
+\emph{Sphere Packings, Lattices and Groups}.
+Springer, 3.ª ed., 1999.
+
+\bibitem{saff1997}
+E.~B. Saff y A.~B.~J. Kuijlaars.
+Distributing many points on a sphere.
+\emph{The Mathematical Intelligencer}, 19(1):5--11, 1997.
+
+\bibitem{papyan2020}
+V.~Papyan, X.~Y. Han y D.~L. Donoho.
+Prevalence of neural collapse during the terminal phase of deep
+learning training.
+\emph{Proceedings of the National Academy of Sciences},
+117(40):24652--24663, 2020.
+
+\bibitem{zhu2021}
+Z.~Zhu, T.~Ding, J.~Zhou, X.~Li, C.~You, J.~Sulam y Q.~Qu.
+A geometric analysis of neural collapse with unconstrained features.
+\emph{Advances in Neural Information Processing Systems} (NeurIPS), 2021.
+
+\bibitem{pernici2021}
+F.~Pernici, M.~Bruni, C.~Baecchi y A.~Del~Bimbo.
+Regular polytope networks.
+\emph{IEEE Transactions on Neural Networks and Learning Systems}, 2021.
+
+\bibitem{liu2017}
+W.~Liu, Y.~Wen, Z.~Yu, M.~Li, B.~Raj y L.~Song.
+SphereFace: deep hypersphere embedding for face recognition.
+\emph{IEEE Conference on Computer Vision and Pattern Recognition}
+(CVPR), 2017.
+
+\bibitem{wang2018}
+H.~Wang, Y.~Wang, Z.~Zhou, X.~Ji, D.~Gong, J.~Zhou, Z.~Li y W.~Liu.
+CosFace: large margin cosine loss for deep face recognition.
+\emph{IEEE Conference on Computer Vision and Pattern Recognition}
+(CVPR), 2018.
+
+\bibitem{deng2019}
+J.~Deng, J.~Guo, N.~Xue y S.~Zafeiriou.
+ArcFace: additive angular margin loss for deep face recognition.
+\emph{IEEE Conference on Computer Vision and Pattern Recognition}
+(CVPR), 2019.
+
+\bibitem{michel2019}
+P.~Michel, O.~Levy y G.~Neubig.
+Are sixteen heads really better than one?
+\emph{Advances in Neural Information Processing Systems} (NeurIPS), 2019.
+
+\bibitem{voita2019}
+E.~Voita, D.~Talbot, F.~Moiseev, R.~Sennrich y I.~Titov.
+Analyzing multi-head self-attention: specialized heads do the heavy
+lifting, the rest can be pruned.
+\emph{Annual Meeting of the Association for Computational Linguistics}
+(ACL), 2019.
+
+\bibitem{dosovitskiy2021}
+A.~Dosovitskiy, L.~Beyer, A.~Kolesnikov \emph{et al.}
+An image is worth 16x16 words: Transformers for image recognition at
+scale.
+\emph{International Conference on Learning Representations} (ICLR), 2021.
+
+\bibitem{vaswani2017}
+A.~Vaswani, N.~Shazeer, N.~Parmar \emph{et al.}
+Attention is all you need.
+\emph{Advances in Neural Information Processing Systems} (NeurIPS), 2017.
+
+\bibitem{wang2020cnn}
+S.-Y. Wang, O.~Wang, R.~Zhang, A.~Owens y A.~A. Efros.
+CNN-generated images are surprisingly easy to spot\dots\ for now.
+\emph{IEEE Conference on Computer Vision and Pattern Recognition}
+(CVPR), 2020.
+
+\bibitem{corvi2023}
+R.~Corvi, D.~Cozzolino, G.~Zingarini, G.~Poggi, K.~Nagano y
+L.~Verdoliva.
+On the detection of synthetic images generated by diffusion models.
+\emph{IEEE International Conference on Acoustics, Speech and Signal
+Processing} (ICASSP), 2023.
+
+\bibitem{zhu2023genimage}
+M.~Zhu, H.~Chen, Q.~Yan \emph{et al.}
+GenImage: a million-scale benchmark for detecting AI-generated images.
+\emph{Advances in Neural Information Processing Systems} (NeurIPS),
+Datasets and Benchmarks, 2023.
+
+\bibitem{chen2024drct}
+B.~Chen, J.~Zeng, J.~Yang y R.~Yang.
+DRCT: diffusion reconstruction contrastive training for synthetic image
+detection.
+\emph{International Conference on Machine Learning} (ICML), 2024.
+
+\end{thebibliography}
+
+\end{document}

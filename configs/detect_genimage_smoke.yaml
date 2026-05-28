@@ -1,0 +1,44 @@
+# smoke de la contribución B (Fase B4): ADM + BigGAN, ya extraídos.
+# valida el pipeline LOGO completo con pocas imágenes antes del barrido
+# real. 2 generadores -> 2 corridas (held-out ADM / held-out BigGAN).
+
+seed: 42
+seeds: [42]                 # una sola semilla para el smoke
+
+head:
+  type: proto               # cabeza de prototipos sobre código firmado
+
+dataset:
+  name: genimage_smoke
+  root: /media/manpla/ST2TB/GenImage
+  image_size: 256
+  num_workers: 4            # moderado: la extracción aún usa el disco
+  generators:
+    - ADM
+    - BigGAN
+  real_subdir: nature
+  max_per_folder: 200       # smoke: pocas imágenes por carpeta
+
+model:
+  name: vit_base_patch16_224
+  pretrained: true
+  embed_dim: 768
+
+proto_head:
+  num_protos: 3             # M+1 = 2 generadores + real
+  feature_dim: 768
+  code_path: artifacts/codes/protos_smoke.pt   # k=3, theta=120°
+  mode: fixed               # prototipos fijos (buffer)
+  margin_deg: 20.0
+  scale: 30.0
+
+optimization:
+  optimizer: adamw
+  lr: 5.0e-5
+  weight_decay: 0.05
+  batch_size: 16
+  epochs: 2
+
+device: cuda
+log_dir: artifacts/logs/detect_smoke
+checkpoint_dir: artifacts/checkpoints/detect_smoke

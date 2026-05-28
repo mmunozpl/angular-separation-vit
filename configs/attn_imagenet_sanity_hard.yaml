@@ -1,0 +1,43 @@
+# smoke modo DURO: verifica que la reproyección tras cada step
+# mantiene las direcciones representativas alineadas al código.
+# Esperado: dir_drift entre épocas ≈ 0 y theta_min ≈ theta_min del
+# código (95,22°) tras la 1.ª época.
+
+seed: 42
+
+dataset:
+  name: imagenet100_sanity
+  mode: sanity
+  root: /media/manpla/Pruebas/Imagenet
+  val_subdir: val_blurred
+  num_classes: 100
+  val_fraction: 0.1
+  image_size: 224
+  num_workers: 8
+
+model:
+  name: vit_base_patch16_224
+  pretrained: true
+  num_heads: 12
+  num_layers: 12
+  embed_dim: 768
+
+loss:
+  ce_label_smoothing: 0.1
+  lambda_div: 0.0       # en duro no se usa R_div (las dirs ya están fijas)
+  hard_variant: true    # ← activa reproyección tras cada optimizer.step()
+
+code:
+  path: artifacts/codes/heads_vitb_layer.pt
+
+optimization:
+  optimizer: adamw
+  lr: 1.0e-4
+  weight_decay: 0.05
+  batch_size: 64
+  epochs: 2
+  warmup_epochs: 0
+
+device: cuda
+log_dir: artifacts/logs/attn_sanity_hard
+checkpoint_dir: artifacts/checkpoints/attn_sanity_hard

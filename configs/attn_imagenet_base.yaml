@@ -1,0 +1,43 @@
+# Tabla 2 fila 1: ViT-B base (sin R_div).
+# baseline para aislar el efecto del regulador.
+
+seed: 42
+
+dataset:
+  name: imagenet100
+  root: /media/manpla/Pruebas/Imagenet
+  train_subdir: train_blurred
+  val_subdir: val_blurred
+  num_classes: 100               # se ignora si wnids_file está
+  wnids_file: configs/imagenet100_cmc.txt  # canónica CMC
+  image_size: 224
+  num_workers: 8
+
+model:
+  name: vit_base_patch16_224
+  pretrained: true
+  num_heads: 12
+  num_layers: 12
+  embed_dim: 768
+
+loss:
+  ce_label_smoothing: 0.1
+  lambda_div: 0.0           # ← sin regulador
+  hard_variant: false
+
+code:
+  # se carga igual (run_attn.py lee theta_target del código), pero
+  # con lambda_div=0 el término R_div no contribuye a la pérdida.
+  path: artifacts/codes/heads_vitb_layer.pt
+
+optimization:
+  optimizer: adamw
+  lr: 1.0e-4
+  weight_decay: 0.05
+  batch_size: 128
+  epochs: 30
+  warmup_epochs: 3
+
+device: cuda
+log_dir: artifacts/logs/attn_base
+checkpoint_dir: artifacts/checkpoints/attn_base

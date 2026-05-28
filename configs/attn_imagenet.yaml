@@ -1,0 +1,53 @@
+# configuración para la contribución A: atención angularmente diversa
+
+seed: 42
+
+dataset:
+  name: imagenet100              # banco de ablación pequeño
+  # NOTA: /media/manpla/ST2TB/Imagenet/val_blurred sólo tiene val.
+  # Para train hay que aportar otra ruta o reusar val_blurred como
+  # train+val temporal (sanity, no es ablación real).
+  root: /media/manpla/Pruebas/Imagenet
+  train_subdir: train_blurred
+  val_subdir: val_blurred
+  num_classes: 100               # se ignora si wnids_file está
+  # lista canónica de ImageNet-100 (Tian 2019, CMC). Si se pasa,
+  # las etiquetas se remapean a [0..99] en el orden del fichero.
+  wnids_file: configs/imagenet100_cmc.txt
+  image_size: 224                # ViT-B/16 estándar
+  num_workers: 8
+
+model:
+  name: vit_base_patch16_224
+  pretrained: true
+  num_heads: 12
+  num_layers: 12
+  embed_dim: 768
+
+loss:
+  ce_label_smoothing: 0.1
+  # R_div suma sobre H*(H-1) pares ordenados × L capas = 1584 términos
+  # para ViT-B/16. lambda = 1e-3 deja contribución comparable a CE
+  # cuando ~80% de pares violan ~0.05 (típico al arranque preentrenado).
+  lambda_div: 0.001
+  # theta_target_deg se toma automáticamente del código cacheado
+  # (paper §482: óptimo de tamaño H en R^D). Para H=12 D=768 son
+  # 95,22°. Si se desea forzar otro valor, descomentar la línea.
+  # theta_target_deg: 95.22
+  hard_variant: false       # si true, fija direcciones al código
+
+code:
+  # se replica esta dirección por cada capa al cargarla
+  path: artifacts/codes/heads_vitb_layer.pt
+
+optimization:
+  optimizer: adamw
+  lr: 1.0e-4
+  weight_decay: 0.05
+  batch_size: 128
+  epochs: 30
+  warmup_epochs: 3
+
+device: cuda
+log_dir: artifacts/logs/attn
+checkpoint_dir: artifacts/checkpoints/attn
