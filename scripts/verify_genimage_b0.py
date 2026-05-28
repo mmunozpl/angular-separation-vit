@@ -73,6 +73,112 @@ def _sha1(path: Path, chunk: int = 1 << 20) -> str:
     return h.hexdigest()
 
 
+def _load_corrupted(path: str | None) -> set[str]:
+    """Carga las rutas de ``corrupted_files.txt`` (formato del CSV).
+
+    Args:
+        path: ruta al fichero de corruptos; None devuelve conjunto
+            vacío.
+
+    Returns:
+        Conjunto de rutas relativas (``GenImage/.../x.PNG``) a
+        descontar de la contabilidad.
+    """
+    if not path or not Path(path).exists():
+        return set()
+    return {
+        ln.strip() for ln in Path(path).read_text().splitlines()
+        if ln.strip()
+    }
+
+
+def _hash_content_check(
+    root: str,
+    gens: list[str],
+    n_samples: int,
+    real_subdir: str = "nature",
+    split: str = "train",
+) -> bool:
+    """B0 por hash de CONTENIDO entre generadores (no por nombre).
+
+    Como los nombres de las ``nature`` son disjuntos entre generadores,
+    la duplicación solo puede detectarse comparando el contenido. Se
+    hashea (sha1) una muestra de cada generador y se buscan colisiones
+    de hash entre generadores distintos.
+
+    Args:
+        root: raíz de GenImage (con los generadores extraídos).
+        gens: generadores a comparar (deben estar en disco).
+        n_samples: nº de imágenes a hashear por generador.
+        real_subdir: carpeta de reales.
+        split: split del que tomar las reales.
+
+    Returns:
+        True si se detecta alguna colisión de contenido entre
+        generadores (duplicación); False si todas son distintas.
+    """
+    base = Path(root)
+    rng = random.Random(0)
+    hashes: dict[str, set[str]] = {}
+    for g in gens:
+        names = _list_image_names(base / g / split / real_subdir)
+        keys = sorted(names)
+        pick = keys if len(keys) <= n_samples else rng.sample(
+            keys, n_samples,
+        )
+        hs: set[str] = set()
+        for name in tqdm(
+            pick, desc=f"sha1 {g}", unit="img", leave=False,
+        ):
+            hs.add(_sha1(names[name]))
+        hashes[g] = hs
+        print(f"  {g}: {len(hs)} hashes únicos de {len(pick)} muestras")
+    any_dup = False
+    print("[B0-hash] intersección de contenido entre pares")
+    for i in range(len(gens)):
+        for j in range(i + 1, len(gens)):
+            a, b = gens[i], gens[j]
+            inter = hashes[a] & hashes[b]
+            print(
+                f"  {a} ∩ {b}: {len(inter)} colisiones de contenido",
+            )
+            any_dup = any_dup or bool(inter)
+    return any_dup
+
+
+def _logo_balances(
+    counts: dict[str, dict[str, int]],
+    generators: list[str],
+) -> list[dict]:
+    """Balance del train de cada split leave-one-out, con/sin dedup.
+
+    Args:
+        counts: conteos por generador (train_ai, train_nature, …).
+        generators: generadores a considerar.
+
+    Returns:
+        Una fila por generador excluido con el balance del train.
+    """
+    present = [g for g in generators if g in counts]
+    real_all = sum(counts[g].get("train_nature", 0) for g in present)
+    ref = present[0] if present else None
+    real_dedup = counts[ref].get("train_nature", 0) if ref else 0
+    rows: list[dict] = []
+    for g in present:
+        tr_ai = sum(
+            counts[x].get("train_ai", 0) for x in present if x != g
+        )
+        rows.append({
+            "held_out": g,
+            "train_ai": tr_ai,
+            "real_nodedup": real_all,
+            "ratio_nodedup": round(real_all / max(tr_ai, 1), 2),
+            "real_dedup": real_dedup,
+            "ratio_dedup": round(real_dedup / max(tr_ai, 1), 2),
+        })
+    return rows
+
+
 def _save_csv(path: Path, rows: list[dict]) -> None:
     """Vuelca filas (lista de dicts) a CSV con cabecera."""
     if not rows:
@@ -97,6 +203,7 @@ def _verify_from_csv(
     meta_path: str,
     generators: list[str],
     out: Path,
+    corrupted: set[str],
 ) -> None:
     """Verificación B0 a partir de ``genimage_metadata.csv``.
 
@@ -114,6 +221,7 @@ def _verify_from_csv(
     first_gen: dict[str, str] = {}
     n_nat = 0
     dup = 0
+    n_corrupt = 0
     dup_examples: list[dict] = []
     sample_nat: list[dict] = []
     rng = random.Random(0)
@@ -126,6 +234,10 @@ def _verify_from_csv(
             if not row:
                 continue
             path = row[0]
+            if path in corrupted:
+                # se descuenta del conteo: no existe/está corrupto
+                n_corrupt += 1
+                continue
             a = path.split("/")
             if len(a) < 5:
                 continue
@@ -191,15 +303,61 @@ def _verify_from_csv(
     print("15 nombres nature al azar (basename -> generador):")
     _show_random(sample_nat, k=15)
 
-    # balance global de train
+    # balance y contabilidad de reales (con y sin dedup)
     tr_ai = sum(c.get("train_ai", 0) for c in counts.values())
     tr_na = sum(c.get("train_nature", 0) for c in counts.values())
-    print("\n[B0-csv] balance train")
+    va_ai = sum(c.get("val_ai", 0) for c in counts.values())
+    va_na = sum(c.get("val_nature", 0) for c in counts.values())
+    one_gen = sorted(counts)[0] if counts else None
+    real_one = counts[one_gen].get("train_nature", 0) if one_gen else 0
+    print("\n[B0-csv] balance y reales con/sin dedup")
     if tr_ai:
         print(
-            f"  nature={tr_na}  ai={tr_ai}  -> "
-            f"ratio nature:ai = {tr_na/tr_ai:.2f}:1",
+            f"  train ai={tr_ai}  "
+            f"nature SIN dedup (los {len(counts)} gen)={tr_na} -> "
+            f"{tr_na/tr_ai:.2f}:1",
         )
+        print(
+            f"        nature CON dedup ('{one_gen}')={real_one} -> "
+            f"{real_one/tr_ai:.2f}:1  (deja las reales en ~1:M)",
+        )
+    if va_ai:
+        print(
+            f"  val   ai={va_ai}  nature={va_na} -> "
+            f"{va_na/va_ai:.2f}:1",
+        )
+    print(
+        f"  (descontados {n_corrupt} ficheros de corrupted_files.txt)",
+    )
+
+    # balance de los 8 splits leave-one-out (train), con/sin dedup
+    bal_rows = _logo_balances(counts, generators)
+    path_bal = out / "logo_balances.csv"
+    _save_csv(path_bal, bal_rows)
+    print(f"\n[guardado] {path_bal}")
+    print("balance train por fold leave-one-out:")
+    for r in bal_rows:
+        print(
+            f"  held_out={r['held_out']:<24} ai={r['train_ai']:>8}  "
+            f"real(sin dedup)={r['real_nodedup']:>8} "
+            f"({r['ratio_nodedup']}:1)  "
+            f"real(dedup)={r['real_dedup']:>7} "
+            f"({r['ratio_dedup']}:1)",
+        )
+
+    # fold construible ahora con los 3 generadores completos en disco
+    trio = [g for g in ("ADM", "BigGAN", "glide") if g in counts]
+    if len(trio) == 3:
+        print(
+            "\n[B0-csv] fold construible con 3 gen completos "
+            "(ADM, BigGAN, glide):",
+        )
+        for r in _logo_balances(counts, trio):
+            print(
+                f"  held_out={r['held_out']:<8} ai={r['train_ai']:>7}  "
+                f"real={r['real_nodedup']:>7} "
+                f"({r['ratio_nodedup']}:1, sin dedup)",
+            )
 
     # veredicto duplicación
     print("\n[VEREDICTO B0 (csv)]")
@@ -293,6 +451,16 @@ def main() -> None:
              "(verificación sin necesidad de extraer)",
     )
     parser.add_argument(
+        "--corrupted", default=None,
+        help="ruta a corrupted_files.txt; se descuenta del conteo",
+    )
+    parser.add_argument(
+        "--hash-gens", default=None,
+        help="lista de generadores (coma) para B0 por hash de "
+             "contenido sobre disco, p. ej. 'ADM,BigGAN,glide'",
+    )
+    parser.add_argument("--hash-samples", type=int, default=300)
+    parser.add_argument(
         "--out-dir", default="artifacts/tables/genimage_b0",
     )
     args = parser.parse_args()
@@ -309,7 +477,34 @@ def main() -> None:
     # modo CSV: autoritativo y disponible antes de la extracción
     if args.metadata is not None:
         print(f"[B0] modo CSV: {args.metadata}")
-        _verify_from_csv(args.metadata, generators, out)
+        corrupted = _load_corrupted(args.corrupted)
+        if corrupted:
+            print(f"[B0] corrupted_files: {len(corrupted)} rutas")
+        _verify_from_csv(args.metadata, generators, out, corrupted)
+        if args.hash_gens:
+            gl = [
+                g.strip() for g in args.hash_gens.split(",")
+                if g.strip()
+            ]
+            print(
+                f"\n[B0-hash] contenido entre {gl} "
+                f"(muestra {args.hash_samples}/gen)",
+            )
+            dup = _hash_content_check(
+                root, gl, args.hash_samples,
+                real_subdir=real_subdir,
+            )
+            print("[VEREDICTO B0-hash]")
+            if dup:
+                print(
+                    "  colisiones de contenido -> reales DUPLICADAS; "
+                    "real_dedup quedaría justificado",
+                )
+            else:
+                print(
+                    "  sin colisiones -> reales DISTINTAS por "
+                    "contenido; no deduplicar (real_dedup innecesario)",
+                )
         return
 
     print(f"[B0] raíz: {root}")

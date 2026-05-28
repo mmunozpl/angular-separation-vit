@@ -6,7 +6,7 @@ seed: 42
 seeds: [42]                 # una sola semilla para el smoke
 
 head:
-  type: proto               # cabeza de prototipos sobre código firmado
+  types: [proto, linear]    # smoke de ambas cabezas (cambio 4)
 
 dataset:
   name: genimage_smoke
@@ -17,7 +17,9 @@ dataset:
     - ADM
     - BigGAN
   real_subdir: nature
-  max_per_folder: 200       # smoke: pocas imágenes por carpeta
+  n_train_per_gen: 200      # smoke: pocas imágenes de train por gen
+  n_val_per_gen: 200        # smoke: val acotada SOLO por velocidad
+  sample_seed: 1234         # fija, independiente de 'seeds'
 
 model:
   name: vit_base_patch16_224

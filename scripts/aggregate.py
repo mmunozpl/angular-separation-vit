@@ -117,6 +117,142 @@ def _table_attn(rows: list[dict]) -> str:
     return "\n".join(out)
 
 
+def _mean_std(values: list[float]) -> tuple[float, float]:
+    """Media y desviación típica poblacional de una lista."""
+    n = len(values)
+    if n == 0:
+        return 0.0, 0.0
+    m = sum(values) / n
+    if n == 1:
+        return m, 0.0
+    var = sum((v - m) ** 2 for v in values) / n
+    return m, var ** 0.5
+
+
+def _fmt(m: float, s: float) -> str:
+    """Formato 'm±s' o 'm' si s≈0."""
+    if s < 1.0e-6:
+        return f"{m:.3f}"
+    return f"{m:.3f}$\\pm${s:.3f}"
+
+
+def _parse_tag(stem: str) -> tuple[str, str]:
+    """Separa ``<cabeza>_<gen>_seed<N>`` en (cabeza, generador).
+
+    Tolera formatos heredados sin prefijo de cabeza (``gA``,
+    ``gA_seed1``), que se asignan a la cabeza ``proto``.
+
+    Args:
+        stem: nombre del csv sin extensión.
+
+    Returns:
+        Par (cabeza, nombre de generador excluido).
+    """
+    core = stem
+    if "_seed" in core:
+        core = core.rsplit("_seed", 1)[0]
+    for h in ("proto", "linear"):
+        if core.startswith(h + "_"):
+            return h, core[len(h) + 1:]
+    return "proto", core
+
+
+def _table_logo_family(parsed: dict[tuple[str, str], list[dict]]) -> str:
+    """Tabla LOGO por familia generativa con delta proto−lineal.
+
+    Separa el caso inter-familia (BigGAN, único GAN) del intra-familia
+    (difusión) y reporta, por fold, el AUROC de prototipos y lineal y
+    su diferencia (cambios 3 y 4 del protocolo).
+
+    Args:
+        parsed: dict (cabeza, generador) -> filas finales por semilla.
+
+    Returns:
+        Cuerpo tabularx de la tabla por familias.
+    """
+    gens = sorted({g for (_, g) in parsed})
+
+    def _au(head: str, gen: str) -> list[float]:
+        return [
+            float(r["val_auroc_realfake"])
+            for r in parsed.get((head, gen), [])
+        ]
+
+    def _os(head: str, gen: str) -> list[float]:
+        return [
+            float(r["val_oscr"]) for r in parsed.get((head, gen), [])
+        ]
+
+    out: list[str] = []
+    out.append(r"\begin{tabularx}{\textwidth}{l l r r r r}")
+    out.append(r"\toprule")
+    out.append(
+        r"generador excluido & familia & AUROC$_\text{proto}$ & "
+        r"AUROC$_\text{lin}$ & $\Delta$ & OSCR$_\text{proto}$ \\"
+    )
+    out.append(r"\midrule")
+
+    # acumuladores para medias por familia (sobre la media de cada fold)
+    fam_au_p: dict[str, list[float]] = {"difusión": [], "GAN": []}
+    fam_au_l: dict[str, list[float]] = {"difusión": [], "GAN": []}
+    fam_dl: dict[str, list[float]] = {"difusión": [], "GAN": []}
+    fam_os: dict[str, list[float]] = {"difusión": [], "GAN": []}
+
+    for g in gens:
+        fam = "GAN" if g == "BigGAN" else "difusión"
+        ap, al, op = _au("proto", g), _au("linear", g), _os("proto", g)
+        g_esc = g.replace("_", r"\_")
+        ap_s = _fmt(*_mean_std(ap)) if ap else "—"
+        al_s = _fmt(*_mean_std(al)) if al else "—"
+        op_s = _fmt(*_mean_std(op)) if op else "—"
+        if ap and al:
+            d = _mean_std(ap)[0] - _mean_std(al)[0]
+            d_s = f"{d:+.3f}"
+            fam_dl[fam].append(d)
+        else:
+            d_s = "—"
+        if ap:
+            fam_au_p[fam].append(_mean_std(ap)[0])
+        if al:
+            fam_au_l[fam].append(_mean_std(al)[0])
+        if op:
+            fam_os[fam].append(_mean_std(op)[0])
+        out.append(
+            f"{g_esc} & {fam} & {ap_s} & {al_s} & {d_s} & {op_s}"
+            r" \\"
+        )
+
+    def _row(label: str, fam: str) -> str:
+        ap_s = _fmt(*_mean_std(fam_au_p[fam])) if fam_au_p[fam] else "—"
+        al_s = _fmt(*_mean_std(fam_au_l[fam])) if fam_au_l[fam] else "—"
+        op_s = _fmt(*_mean_std(fam_os[fam])) if fam_os[fam] else "—"
+        d_s = f"{_mean_std(fam_dl[fam])[0]:+.3f}" if fam_dl[fam] \
+            else "—"
+        return (
+            f"{label} & & {ap_s} & {al_s} & {d_s} & {op_s}" + r" \\"
+        )
+
+    out.append(r"\midrule")
+    out.append(_row(r"\textbf{intra-familia (difusión)}", "difusión"))
+    out.append(_row(r"\textbf{inter-familia (GAN)}", "GAN"))
+    all_p = fam_au_p["difusión"] + fam_au_p["GAN"]
+    all_l = fam_au_l["difusión"] + fam_au_l["GAN"]
+    all_d = fam_dl["difusión"] + fam_dl["GAN"]
+    all_o = fam_os["difusión"] + fam_os["GAN"]
+    d_all = f"{_mean_std(all_d)[0]:+.3f}" if all_d else "—"
+    out.append(
+        r"\textbf{media} & & "
+        f"{_fmt(*_mean_std(all_p)) if all_p else '—'} & "
+        f"{_fmt(*_mean_std(all_l)) if all_l else '—'} & "
+        f"{d_all} & "
+        f"{_fmt(*_mean_std(all_o)) if all_o else '—'}"
+        r" \\"
+    )
+    out.append(r"\bottomrule")
+    out.append(r"\end{tabularx}")
+    return "\n".join(out)
+
+
 def _table_logo(per_gen: dict[str, list[dict]]) -> str:
     """Tabla LOGO con mean±std por generador sobre semillas.
 
@@ -131,23 +267,6 @@ def _table_logo(per_gen: dict[str, list[dict]]) -> str:
         r"acc real/sint \\"
     )
     out.append(r"\midrule")
-
-    def _mean_std(values: list[float]) -> tuple[float, float]:
-        """Media y desv. tip. poblacional de una lista."""
-        n = len(values)
-        if n == 0:
-            return 0.0, 0.0
-        m = sum(values) / n
-        if n == 1:
-            return m, 0.0
-        var = sum((v - m) ** 2 for v in values) / n
-        return m, var ** 0.5
-
-    def _fmt(m: float, s: float) -> str:
-        """Formato 'm±s' o 'm' si s≈0."""
-        if s < 1.0e-6:
-            return f"{m:.3f}"
-        return f"{m:.3f}$\\pm${s:.3f}"
 
     if per_gen:
         agg_au: list[float] = []
@@ -332,10 +451,11 @@ def main() -> None:
         _table_attn(attn_rows), encoding="utf-8",
     )
 
-    # tabla 3: LOGO. agrupamos por nombre de generador y reducimos
-    # sobre semillas. el sufijo "_seed<N>" del stem se quita; los
-    # csvs auxiliares (per_class, per_gen_auroc) se ignoran aquí.
-    per_gen: dict[str, list[dict]] = {}
+    # tabla 3: LOGO. se agrupa por (cabeza, generador) y se reduce
+    # sobre semillas; los csvs auxiliares (per_class, per_gen_auroc)
+    # se ignoran. tabla_logo = prototipos por generador;
+    # tabla_logo_familia = desglose intra/inter familia + delta lineal.
+    parsed: dict[tuple[str, str], list[dict]] = {}
     detect_dir = logs / args.detect_subdir
     if detect_dir.exists():
         for csv_p in sorted(detect_dir.glob("*.csv")):
@@ -343,16 +463,21 @@ def main() -> None:
             if stem.endswith("_per_class") or \
                stem.endswith("_per_gen_auroc"):
                 continue
-            # se separa el sufijo _seed<N> si existe
-            if "_seed" in stem:
-                gen_name = stem.rsplit("_seed", 1)[0]
-            else:
-                gen_name = stem
+            head, gen_name = _parse_tag(stem)
             rows = _read_csv(csv_p)
             if rows:
-                per_gen.setdefault(gen_name, []).append(rows[-1])
+                parsed.setdefault((head, gen_name), []).append(
+                    rows[-1]
+                )
+    per_gen: dict[str, list[dict]] = {}
+    for (head, gen_name), rows in parsed.items():
+        if head == "proto":
+            per_gen.setdefault(gen_name, []).extend(rows)
     (tables / "tabla_logo.tex").write_text(
         _table_logo(per_gen), encoding="utf-8",
+    )
+    (tables / "tabla_logo_familia.tex").write_text(
+        _table_logo_family(parsed), encoding="utf-8",
     )
 
     # figuras
