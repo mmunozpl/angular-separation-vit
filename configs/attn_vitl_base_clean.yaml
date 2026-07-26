@@ -1,0 +1,43 @@
+# ViT-L base (sin R_div) sobre ImageNet-100 LIMPIO (trio multi-arq).
+# segunda columna de tab:arch; lambda_div=0 aisla el baseline.
+# batch 64 (modelo 3x el ViT-B; subir a 128 si el piloto cabe holgado).
+# escribe en el subarbol vitl_clean.
+
+seed: 42
+
+dataset:
+  name: imagenet100
+  root: /media/manpla/ST2TB/kaggle/in100
+  train_subdir: train
+  val_subdir: val
+  num_classes: 100               # se ignora si wnids_file esta
+  wnids_file: configs/imagenet100_cmc.txt  # canonica CMC (coincide)
+  image_size: 224
+  num_workers: 8
+
+model:
+  name: vit_large_patch16_224
+  pretrained: true
+  num_heads: 16
+  num_layers: 24
+  embed_dim: 1024
+
+loss:
+  ce_label_smoothing: 0.1
+  lambda_div: 0.0           # sin regulador (base)
+  hard_variant: false
+
+code:
+  path: artifacts/codes/heads_vitl_layer.pt
+
+optimization:
+  optimizer: adamw
+  lr: 1.0e-4
+  weight_decay: 0.05
+  batch_size: 64
+  epochs: 30
+  warmup_epochs: 3
+
+device: cuda
+log_dir: artifacts/logs/vitl_clean
+checkpoint_dir: artifacts/checkpoints/vitl_clean

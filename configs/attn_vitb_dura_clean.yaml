@@ -1,0 +1,44 @@
+# ViT-B DURA (variante hard: reproyecta sobre el código tras cada step,
+# impone la diversidad por construcción) sobre ImageNet-100 LIMPIO.
+# hard_variant=true, lambda_div=0 (la reproyección hace el trabajo, no
+# hay backprop por la SVD → no sufre la inestabilidad de la blanda).
+# mide tab:divattn: theta_min clava el código (~84,76) pagando coste.
+
+seed: 42
+
+dataset:
+  name: imagenet100
+  root: /media/manpla/ST2TB/kaggle/in100
+  train_subdir: train
+  val_subdir: val
+  num_classes: 100
+  wnids_file: configs/imagenet100_cmc.txt
+  image_size: 224
+  num_workers: 8
+
+model:
+  name: vit_base_patch16_224
+  pretrained: true
+  num_heads: 12
+  num_layers: 12
+  embed_dim: 768
+
+loss:
+  ce_label_smoothing: 0.1
+  lambda_div: 0.0           # la dura impone por reproyección, no por loss
+  hard_variant: true        # reproyecta al código tras cada step
+
+code:
+  path: artifacts/codes/heads_vitb_layer.pt
+
+optimization:
+  optimizer: adamw
+  lr: 1.0e-4
+  weight_decay: 0.05
+  batch_size: 128
+  epochs: 30
+  warmup_epochs: 3
+
+device: cuda
+log_dir: artifacts/logs/vitb_clean
+checkpoint_dir: artifacts/checkpoints/vitb_clean

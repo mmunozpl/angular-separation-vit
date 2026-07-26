@@ -1,0 +1,44 @@
+# ViT-L BLANDA (regularizador angular blando sobre v1(W_O), la sonda de
+# inercia) sobre ImageNet-100 LIMPIO. lambda_div=1e-3, hard_variant=false.
+# replica cross-arquitectura del 4o apoyo: theta_min sube al simplex de
+# H=16 (|cos|<=1/15, ~86,18 en lectura sin signo) sin mover s_func.
+# batch 64 (modelo 3x el ViT-B); escribe en el subarbol vitl_clean.
+
+seed: 42
+
+dataset:
+  name: imagenet100
+  root: /media/manpla/ST2TB/kaggle/in100
+  train_subdir: train
+  val_subdir: val
+  num_classes: 100
+  wnids_file: configs/imagenet100_cmc.txt
+  image_size: 224
+  num_workers: 8
+
+model:
+  name: vit_large_patch16_224
+  pretrained: true
+  num_heads: 16
+  num_layers: 24
+  embed_dim: 1024
+
+loss:
+  ce_label_smoothing: 0.1
+  lambda_div: 1.0e-3        # regularizador blando (sonda de inercia)
+  hard_variant: false
+
+code:
+  path: artifacts/codes/heads_vitl_layer.pt
+
+optimization:
+  optimizer: adamw
+  lr: 1.0e-4
+  weight_decay: 0.05
+  batch_size: 64
+  epochs: 30
+  warmup_epochs: 3
+
+device: cuda
+log_dir: artifacts/logs/vitl_clean
+checkpoint_dir: artifacts/checkpoints/vitl_clean

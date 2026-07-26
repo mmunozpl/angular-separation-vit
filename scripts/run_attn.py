@@ -17,6 +17,7 @@ from src.data.imagenet import (
 from src.models.attn_diverse import AttnDiverseViT
 from src.seed import set_seed
 from src.train.train_attn import train_attn
+from src.reg_funcional import PERCEPTUAL, PROFUNDO
 
 
 def main() -> None:
@@ -27,9 +28,25 @@ def main() -> None:
         "--run-name", default="attnA",
         help="prefijo de logs y checkpoints",
     )
+    parser.add_argument(
+        "--seed", type=int, default=None,
+        help="sobreescribe seed del config (barrido multi-semilla)",
+    )
+    parser.add_argument(
+        "--save-every", type=int, default=None,
+        help="sobreescribe optimization.save_every (0 = solo final)",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    # override de semilla por cli: reutiliza un único config para el
+    # barrido de semillas sin clonar el yaml por semilla
+    if args.seed is not None:
+        cfg["seed"] = int(args.seed)
+    # override de save_every: el null a 5 semillas solo necesita el
+    # punto final; la traza por época es para la curva de la matriz
+    if args.save_every is not None:
+        cfg["optimization"]["save_every"] = int(args.save_every)
     set_seed(int(cfg["seed"]))
 
     ds = cfg["dataset"]
@@ -123,15 +140,34 @@ def main() -> None:
         img_size=int(ds["image_size"]),
     )
 
+    # ssl congelado (brazo dinov2): solo la cabeza lineal entrena;
+    # la columna queda tal cual sale del preentreno
+    if bool(cfg["model"].get("freeze_backbone", False)):
+        for p in model.parameters():
+            p.requires_grad = False
+        for p in model.backbone.model.head.parameters():
+            p.requires_grad = True
+        n_tr = sum(
+            p.numel() for p in model.parameters() if p.requires_grad
+        )
+        print(f"columna congelada; parámetros entrenables={n_tr}",
+              flush=True)
+
     opt_cfg = cfg["optimization"]
     optimizer = torch.optim.AdamW(
-        model.parameters(),
+        [p for p in model.parameters() if p.requires_grad],
         lr=float(opt_cfg["lr"]),
         weight_decay=float(opt_cfg["weight_decay"]),
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=int(opt_cfg["epochs"]),
     )
+
+    # portador del regularizador y localización por profundidad; 'wo' es
+    # la v3 (brazo inerte). localizacion: todas/None, perceptual, profundo.
+    portador = str(cfg["loss"].get("portador", "wo"))
+    loc = cfg["loss"].get("localizacion")
+    mascara = {"perceptual": PERCEPTUAL, "profundo": PROFUNDO}.get(loc)
 
     train_attn(
         model=model,
@@ -147,6 +183,9 @@ def main() -> None:
         ckpt_dir=str(cfg["checkpoint_dir"]),
         device=str(cfg["device"]),
         run_name=args.run_name,
+        portador=portador,
+        mascara=mascara,
+        save_every=int(opt_cfg.get("save_every", 0)),
     )
 
 

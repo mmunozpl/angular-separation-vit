@@ -1,0 +1,43 @@
+# ViT-B BLANDA (regularizador angular blando sobre v1(W_O), la SONDA de
+# inercia) sobre ImageNet-100 LIMPIO. lambda_div=1e-3, hard_variant=false.
+# mide el 4º apoyo (tab:divattn): theta_min sube a ~85 pero s_func no se
+# mueve. portador wo (head_directions = v1(W_O)) por defecto de train_attn.
+
+seed: 42
+
+dataset:
+  name: imagenet100
+  root: /media/manpla/ST2TB/kaggle/in100
+  train_subdir: train
+  val_subdir: val
+  num_classes: 100
+  wnids_file: configs/imagenet100_cmc.txt
+  image_size: 224
+  num_workers: 8
+
+model:
+  name: vit_base_patch16_224
+  pretrained: true
+  num_heads: 12
+  num_layers: 12
+  embed_dim: 768
+
+loss:
+  ce_label_smoothing: 0.1
+  lambda_div: 1.0e-3        # regularizador blando (sonda de inercia)
+  hard_variant: false
+
+code:
+  path: artifacts/codes/heads_vitb_layer.pt
+
+optimization:
+  optimizer: adamw
+  lr: 1.0e-4
+  weight_decay: 0.05
+  batch_size: 128
+  epochs: 30
+  warmup_epochs: 3
+
+device: cuda
+log_dir: artifacts/logs/vitb_clean
+checkpoint_dir: artifacts/checkpoints/vitb_clean

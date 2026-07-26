@@ -3,7 +3,7 @@
 import torch
 from torch import nn
 
-from src.models.vit_backbone import HeadProjections
+from src.models.vit_backbone import HeadProjections, robust_svd
 
 
 def _rotate_align_columns(
@@ -167,10 +167,9 @@ class AttnDiverseViT(nn.Module):
                 for blk in m.blocks
             ]).contiguous()  # (L, H, D, hd)
             wo_flat = wo_stack.reshape(L * h, d, hd)  # (LH, D, hd)
-            # SVD batched de las 144 matrices en una sola llamada
-            u, _, _ = torch.linalg.svd(
-                wo_flat, full_matrices=False,
-            )
+            # SVD batched robusto: una cabeza dura puede degenerar y
+            # gesdd CUDA aborta (error 64); la cascada lo cubre.
+            u, _, _ = robust_svd(wo_flat, full_matrices=False)
             u1 = u[:, :, 0]  # (LH, D)
             # código aplanado a (LH, D) en mismo device/dtype
             c_flat = code.reshape(L * h, d).to(

@@ -1,0 +1,48 @@
+# DINOv2 ViT-L/14 CONGELADO + cabeza lineal sobre ImageNet-100 LIMPIO
+# (tercera columna del trio, tab:arch: varia el REGIMEN ---ssl vs
+# supervisado--- a escala constante frente a vitl 16H/1024d).
+# freeze_backbone=true -> solo la cabeza entrena; la geometria de pesos
+# analizada por las fases de senal es la del preentreno lvd-142m,
+# identica entre semillas (la semilla solo mueve cabeza y orden de
+# datos). lr 1e-3: probe lineal, no fine-tune. patch 14 a 224 px
+# (16x16 parches; timm interpola las posiciones).
+
+seed: 42
+
+dataset:
+  name: imagenet100
+  root: /media/manpla/ST2TB/kaggle/in100
+  train_subdir: train
+  val_subdir: val
+  num_classes: 100
+  wnids_file: configs/imagenet100_cmc.txt
+  image_size: 224
+  num_workers: 8
+
+model:
+  name: vit_large_patch14_dinov2.lvd142m
+  pretrained: true
+  freeze_backbone: true
+  num_heads: 16
+  num_layers: 24
+  embed_dim: 1024
+
+loss:
+  ce_label_smoothing: 0.1
+  lambda_div: 0.0           # sin regulador: brazo base congelado
+  hard_variant: false
+
+code:
+  path: artifacts/codes/heads_vitl_layer.pt
+
+optimization:
+  optimizer: adamw
+  lr: 1.0e-3
+  weight_decay: 0.05
+  batch_size: 128
+  epochs: 30
+  warmup_epochs: 3
+
+device: cuda
+log_dir: artifacts/logs/dinov2_clean
+checkpoint_dir: artifacts/checkpoints/dinov2_clean

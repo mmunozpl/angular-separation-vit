@@ -13,7 +13,8 @@ def r_div(
     """Regulador de diversidad angular (paper §665, eq. 6).
 
     Con direcciones representativas dadas por el primer vector
-    singular izquierdo de ``W_O^(h)`` (definidas salvo signo), la
+    singular derecho ``v_1(W_O^(h))`` ---la dirección dominante de
+    escritura en el residuo, en R^768, definida salvo signo---, la
     pérdida usa **el valor absoluto** del producto escalar:
 
     ``R_div = sum_{h != h'} max(0, |<r_h, r_{h'}>| - cos theta*)``
