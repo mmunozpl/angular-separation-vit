@@ -3,32 +3,35 @@ message: >-
   Si utiliza este software, por favor cítelo como se indica a
   continuación.
 title: >-
-  Separación angular máxima en Transformers de visión: códigos
-  esféricos para atención diversa y detección generalizable de
-  medios sintéticos
+  Same function, different pruning: the dominant direction of W_O
+  under free, soft, and hard intervention
 abstract: >-
-  Implementación y validación de tres piezas: (1) generación de
-  códigos esféricos por descenso de gradiente proyectado sobre la
-  energía de Riesz en S^{d-1}, validada contra el kissing number;
-  (2) un regularizador de atención angularmente diversa sobre las
-  direcciones representativas de las cabezas de un ViT; y (3) una
-  cabeza de prototipos por generador anclada a un código esférico,
-  con rechazo en conjunto abierto, para la detección de imagen
-  sintética sobre GenImage en régimen leave-one-generator-out.
+  Code and measurement scripts for a study of the value-output gauge
+  in Vision Transformer attention heads. The dominant direction of a
+  head's output projection, v1(W_O), is routinely used to prune
+  redundant heads, interpret their role, or route information between
+  them; this work shows that direction is not identifiable under the
+  value-output gauge, that the non-identifiability has a measurable
+  consequence for pruning decisions, and that the coupling between
+  that geometry and the function is one-directional across a soft
+  angular probe and a hard simplex-imposing variant. Results are
+  established on ViT-B/16, contrasted on ViT-L/16 and a frozen
+  DINOv2, and extended without training to a pretrained language
+  transformer (Pythia-410M).
 type: software
 authors:
   - given-names: Manuel
     family-names: Muñoz Plá
     email: mmunozpl@uoc.edu
-version: 1.0.0
-date-released: "2026-05-28"
+    orcid: "https://orcid.org/0009-0000-5714-912X"
+version: 2.0.0
+date-released: "2026-07-27"
 license: Apache-2.0
 keywords:
   - vision transformer
-  - separación angular
-  - códigos esféricos
-  - energía de Riesz
-  - kissing number
-  - detección de medios sintéticos
-  - conjunto abierto
-  - GenImage
+  - attention heads
+  - gauge non-identifiability
+  - output projection
+  - head pruning
+  - mechanistic interpretability
+  - value-output circuit
