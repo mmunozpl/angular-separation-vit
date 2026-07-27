@@ -30,10 +30,10 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.carga import ARQUITECTURAS, cargar_probe_loader
+from src.carga import (ARQUITECTURAS, cargar_pesos_en_modelo,
+                       cargar_probe_loader)
 from src.metrics.attention import functional_similarity_matrix
 from src.models.vit_backbone import HeadProjections, capture_attention
-from scripts.confirmatory_sfunc import _load_model
 from scripts.principal_angles import subspace_similarity
 
 SEEDS = [42, 43, 44, 45, 46]
@@ -199,7 +199,7 @@ def main() -> None:
             ck = Path(
                 f"artifacts/checkpoints/{arch}_clean/"
                 f"attnA_{variant}_seed{seed}_last.pt")
-            _load_model(ck, model, DEVICE)
+            cargar_pesos_en_modelo(ck, model, DEVICE)
             avg_attn, avg_logit = _capture(model, loader)
             n_layers = avg_attn.shape[0]
             d, h, hd = model.embed_dim, model.num_heads, model.head_dim

@@ -25,39 +25,75 @@ on Hugging Face (see `## Data and weights` below).
 
 ## Requirements
 
-- Python ≥ 3.10, PyTorch, and [`timm`](https://github.com/huggingface/pytorch-image-models)
-  for the ViT-B/16 and ViT-L/16 columns; [`transformers`](https://github.com/huggingface/transformers)
-  for the language column (Pythia-410M).
-- A single NVIDIA GPU (developed on an RTX 5090, 32 GB); the language
-  column is closed-form over weights and runs on CPU.
+- Python 3.11; PyTorch and [`timm`](https://github.com/huggingface/pytorch-image-models)
+  for the ViT-B/16 and ViT-L/16 columns, [`transformers`](https://github.com/huggingface/transformers)
+  for the language column (Pythia-410M) — exact versions locked in
+  [`pyproject.toml`](pyproject.toml)/[`uv.lock`](uv.lock), frozen from
+  the environment that produced every result in the paper.
+- A single NVIDIA GPU (developed on an RTX 5090, 32 GB, CUDA 13.0);
+  the language column is closed-form over weights and runs on CPU.
 - Datasets (ImageNet-1k / ImageNet-100) are downloaded manually; paths
   are passed through the YAML configs and never fetched from code.
 
 ```bash
 conda activate pytorch28
+uv pip install -r <(uv export --no-hashes --no-dev)
 ```
+
+(`uv sync` is deliberately not used: `pytorch28` is a conda
+environment shared with other projects, and `uv sync` would remove
+any package not declared in this repo's `pyproject.toml`. The command
+above installs the exact locked versions additively instead.)
 
 ## Layout
 
 ```
-configs/   # YAML configs for the ViT-B, ViT-L and DINOv2 columns
+configs/
+  codes.yaml                     # spherical-code generation (Riesz descent)
+  attn_vitb_{base,blanda,dura}_clean.yaml    # ViT-B column, 3 variants
+  attn_vitl_{base,blanda,dura}_clean.yaml    # ViT-L column, 3 variants
+  attn_dinov2_base_clean.yaml    # frozen DINOv2 column
+  imagenet100_cmc.txt            # canonical 100-class synset list (CMC)
 src/
-  codes/     # Riesz energy, projected descent, kissing-number checks
-  models/    # ViT backbone, diverse-attention ViT (soft/hard probe)
-  losses/    # angular margin and R_div
-  data/      # ImageNet loader
-  metrics/   # head diversity and functional similarity
-  train/     # probe training loop
-scripts/   # entry points (training queues, gauge probes, decision
-           # rota, ablation, certified orbit)
-tests/     # pytest suite
-archivo/   # closed verification phases (de-risk, sanity, smoke),
-           # kept as process evidence, not as the live pipeline
+  seed.py             # single set_seed for reproducibility
+  config.py            # YAML config loader
+  carga.py              # shared loaders: fine-tuned backbone + frozen probe set
+  firma_funcional.py    # gauge-invariant response signature v1(C_h^P)
+  gauge_flip.py         # value-output gauge transformation (Phase G)
+  reg_funcional.py      # R_func: the angular probe, soft and hard
+  codes/
+    riesz.py       # Riesz energy and its gradient
+    generate.py     # projected gradient descent on S^{d-1}
+    canonical.py     # canonical inits for known kissing numbers
+    validate.py      # theta_min vs. kissing-number lower bound
+  models/
+    vit_backbone.py   # ViT-B/L/DINOv2 backbone, attention hooks
+    attn_diverse.py    # AttnDiverseViT: soft/hard angular probe
+  losses/
+    angular.py    # R_div (eq. 5) and angular margin
+  data/
+    imagenet.py    # ImageNet-100/1k loader
+  metrics/
+    attention.py    # head redundancy, entropy, representative direction
+  train/
+    train_attn.py    # training loop for the angular probe
+  viz/
+    sphere.py    # 2D/3D projections of spherical codes
+scripts/   # one entry point per paper result — see Usage below
+tests/     # pytest suite (attention, codes, losses, SVD fallback/GPU)
+archivo/   # closed lines of work kept as process evidence, not the
+           # live pipeline: the discarded detection contribution,
+           # superseded paper drafts, orphaned src/scripts/configs
+           # from earlier iterations, the SVD-crash postmortem, and
+           # other closed exploratory probes and gates
 ```
 
 ## Usage
 
 ```bash
+# Phase 1 — spherical codes: generate, cache, validate vs. kissing number
+python scripts/gen_codes.py --config configs/codes.yaml
+
 # anchor column ViT-B (n=5 seeds): base, soft and hard
 bash scripts/cola_base_clean.sh && bash scripts/cola_finde.sh
 
@@ -65,12 +101,36 @@ bash scripts/cola_base_clean.sh && bash scripts/cola_finde.sh
 bash scripts/cola_vitl.sh
 bash scripts/cola_dinov2.sh
 
-# decision instability under gauge: vision (ViT-B) and language (Pythia-410M)
+# ablation table (base/soft/hard, val_top1/theta_min/redundancy) — tab:divattn
+python scripts/ablation_table_A.py
+
+# frozen 1000-image probe set shared by every diagnostic below
+python scripts/build_probe_set.py
+
+# Phase G — gauge-flip invariance: v1(W_O) drifts, the OV circuit doesn't — tab:gauge
+python scripts/run_fase_G.py
+
+# Phase 0 — computed-vs-static signature per layer — tab:residuo
+python scripts/run_fase_0.py
+
+# decision instability under gauge: vision (ViT-B) and language (Pythia-410M) — tab:decision
 python scripts/decision_rota.py
 python scripts/decision_rota_lm.py
 
-# certified gauge orbit over the real weights
+# certified gauge orbit over the real weights — app:orbita
 python scripts/orbita_gauge.py
+
+# Q·K relocation with depth — tab:inversion, fig:inversion
+python scripts/dissociation_D.py
+python scripts/principal_angles.py
+python scripts/fig_inversion.py
+
+# pruning by criterion — weights vs. signature vs. random floor — tab:poda
+python scripts/poda_criterio.py
+
+# cold reads: soft-probe inertness and hard-variant cost (§6.2, §6.3)
+python scripts/inertia_read.py
+python scripts/dura_cost_read.py
 
 # tests
 pytest tests/ -q

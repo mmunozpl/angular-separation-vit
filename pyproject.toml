@@ -1,0 +1,28 @@
+[project]
+name = "angular-separation-vit"
+version = "2.0.0"
+description = "Same function, different pruning: the dominant direction of W_O under free, soft, and hard intervention"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+authors = [
+    { name = "Manuel Muñoz Plá", email = "mmunozpl@uoc.edu" },
+]
+dependencies = [
+    "torch==2.11.0",
+    "torchvision==0.26.0",
+    "timm==1.0.22",
+    "transformers==4.57.1",
+    "numpy==2.3.3",
+    "scipy==1.17.1",
+    "pandas==2.3.3",
+    "pillow==11.3.0",
+    "matplotlib==3.10.7",
+    "tqdm==4.67.3",
+    "pyyaml==6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.0.3",
+]

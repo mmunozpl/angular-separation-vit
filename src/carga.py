@@ -207,3 +207,28 @@ def cargar_vit_base(
     print(f"[modelo] {Path(ckpt_path).name} "
           f"(faltan={len(miss)} sobran={len(unexp)})", flush=True)
     return hp.model
+
+
+def cargar_pesos_en_modelo(
+    ckpt_path: str,
+    model: torch.nn.Module,
+    device: str = "cuda",
+) -> None:
+    """carga los pesos de un checkpoint de A sobre un modelo ya construido.
+
+    variante de `cargar_vit_base` para cuando el modelo (con su
+    `img_size`/`num_classes` ya fijados) se construye aparte y solo
+    hace falta inyectarle los pesos del checkpoint.
+
+    args:
+        ckpt_path: ruta al checkpoint (.pt con clave 'model').
+        model: módulo ya construido sobre el que cargar los pesos.
+        device: cuda o cpu.
+    """
+    blob = torch.load(ckpt_path, map_location=device, weights_only=False)
+    sd = blob.get("model", blob)
+    sd = {k.replace("backbone.", "", 1): v for k, v in sd.items()}
+    ms = model.state_dict()
+    sd = {k: v for k, v in sd.items()
+          if not (k in ms and ms[k].shape != v.shape)}
+    model.load_state_dict(sd, strict=False)
