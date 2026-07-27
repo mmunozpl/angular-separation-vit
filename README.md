@@ -140,7 +140,11 @@ pytest tests/ -q
 
 - Reproduction checkpoints (base/soft/hard pairs per seed and
   architecture): <https://huggingface.co/ManuelPla/angular-separation-vit-checkpoints>
+  (DOI: [10.57967/hf/9742](https://doi.org/10.57967/hf/9742))
 - CSVs backing every table and figure in the paper: <https://huggingface.co/datasets/ManuelPla/angular-separation-vit-results>
+  (DOI: [10.57967/hf/9743](https://doi.org/10.57967/hf/9743))
+- Code (this repository): DOI pending, archived on Zenodo on the next
+  tagged release.
 
 ## License
 
