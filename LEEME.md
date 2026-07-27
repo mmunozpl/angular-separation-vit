@@ -142,9 +142,9 @@ pytest tests/ -q
 ## Datos y pesos
 
 - Checkpoints de reproducción (pares base/blanda/dura por semilla y
-  arquitectura): <https://huggingface.co/ManuelPla/angular-separation-vit-checkpoints>
+  arquitectura): <https://huggingface.co/ManPla/angular-separation-vit-checkpoints>
   (DOI: [10.57967/hf/9742](https://doi.org/10.57967/hf/9742))
-- CSV que respaldan cada tabla y figura del paper: <https://huggingface.co/datasets/ManuelPla/angular-separation-vit-results>
+- CSV que respaldan cada tabla y figura del paper: <https://huggingface.co/datasets/ManPla/angular-separation-vit-results>
   (DOI: [10.57967/hf/9743](https://doi.org/10.57967/hf/9743))
 - Código (este repositorio), archivado en Zenodo: <https://github.com/mmunozpl/angular-separation-vit>
   (DOI: [10.5281/zenodo.21630535](https://doi.org/10.5281/zenodo.21630535))
