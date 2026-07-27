@@ -146,8 +146,8 @@ pytest tests/ -q
   (DOI: [10.57967/hf/9742](https://doi.org/10.57967/hf/9742))
 - CSV que respaldan cada tabla y figura del paper: <https://huggingface.co/datasets/ManuelPla/angular-separation-vit-results>
   (DOI: [10.57967/hf/9743](https://doi.org/10.57967/hf/9743))
-- Código (este repositorio): DOI pendiente, se archiva en Zenodo con
-  el próximo release etiquetado.
+- Código (este repositorio), archivado en Zenodo: <https://github.com/mmunozpl/angular-separation-vit>
+  (DOI: [10.5281/zenodo.21630535](https://doi.org/10.5281/zenodo.21630535))
 
 ## Licencia
 
