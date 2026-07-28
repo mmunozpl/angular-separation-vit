@@ -149,7 +149,27 @@ pytest tests/ -q
 - Código (este repositorio), archivado en Zenodo: <https://github.com/mmunozpl/angular-separation-vit>
   (DOI: [10.5281/zenodo.21630535](https://doi.org/10.5281/zenodo.21630535))
 
+## Cómo citar
+
+Si menciona o usa esta obra, cítela así (GitHub también ofrece el
+botón «Cite this repository», generado desde
+[CITATION.cff](CITATION.cff)):
+
+```bibtex
+@software{munozpla2026samefunctiondifferentpruning,
+  author  = {Muñoz Plá, Manuel},
+  title   = {Same function, different pruning: the dominant direction
+             of W_O under free, soft, and hard intervention},
+  year    = {2026},
+  version = {2.0.0},
+  doi     = {10.5281/zenodo.21630535},
+  url     = {https://github.com/mmunozpl/angular-separation-vit}
+}
+```
+
+El paper en sí tendrá su propia entrada basada en arXiv en cuanto el
+envío reciba un identificador público.
+
 ## Licencia
 
-Apache-2.0. Véase [LICENSE](LICENSE). Si utiliza este software, cítelo
-como se indica en [CITATION.cff](CITATION.cff).
+Apache-2.0. Véase [LICENSE](LICENSE).
