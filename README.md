@@ -23,6 +23,8 @@ Code and measurement scripts are published here; the CSVs backing
 every table and the reproduction checkpoints are published separately
 on Hugging Face (see `## Data and weights` below).
 
+> Author's site: [manpla.net](https://manpla.net/en/about) · publications: [manpla.net/en/papers](https://manpla.net/en/papers)
+
 ## Requirements
 
 - Python 3.11; PyTorch and [`timm`](https://github.com/huggingface/pytorch-image-models)
