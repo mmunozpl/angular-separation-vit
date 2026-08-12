@@ -145,3 +145,40 @@ def cos_pares_circuito_ov(
         torch.linalg.svd(circ[h], full_matrices=False).U[:, 0]
         for h in range(n_cabezas)])                           # [h, d]
     return (r @ r.t()).abs()
+
+
+@torch.no_grad()
+def aplica_gauge_ortogonal(
+    modelo, capa: int, n_cabezas: int, dim_cabeza: int, semilla: int
+) -> None:
+    """aplica un gauge ortogonal por cabeza, in situ.
+
+    espeja `aplica_gauge_ov` salvo que r se muestrea en o(d_h) en vez
+    de en gl(d_h). sirve de assert de c1: bajo este gauge no debe
+    moverse ni v1(w_o) ni el circuito.
+
+    Args:
+        modelo: el vit.
+        capa: índice de la capa.
+        n_cabezas: cabezas h.
+        dim_cabeza: d_h.
+        semilla: semilla del generador de r.
+    """
+    g = torch.Generator(device="cpu").manual_seed(semilla)
+    attn = modelo.blocks[capa].attn
+    w_qkv, w_proj = attn.qkv.weight, attn.proj.weight
+    base = 2 * w_qkv.shape[1]
+    for h in range(n_cabezas):
+        m = torch.randn(dim_cabeza, dim_cabeza, generator=g,
+                        dtype=torch.float64)
+        r = torch.linalg.qr(m)[0]                    # ortogonal exacta
+        r_inv_t = r                                  # (r^-1)^t = r
+        fil = slice(base + h * dim_cabeza,
+                    base + (h + 1) * dim_cabeza)
+        col = slice(h * dim_cabeza, (h + 1) * dim_cabeza)
+        w_qkv[fil, :] = (r.t() @ w_qkv[fil, :].double()).to(w_qkv.dtype)
+        if attn.qkv.bias is not None:
+            attn.qkv.bias[fil] = (
+                r.t() @ attn.qkv.bias[fil].double()).to(w_qkv.dtype)
+        w_proj[:, col] = (
+            w_proj[:, col].double() @ r_inv_t).to(w_proj.dtype)

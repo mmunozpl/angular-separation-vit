@@ -1,0 +1,9 @@
+# entorno del Space: la demo es álgebra sobre pesos. no necesita
+# transformers, timm ni pandas; torch en su rueda de cpu basta.
+--extra-index-url https://download.pytorch.org/whl/cpu
+gradio==6.22.0
+torch==2.11.0
+safetensors==0.6.2
+numpy
+matplotlib
+tqdm

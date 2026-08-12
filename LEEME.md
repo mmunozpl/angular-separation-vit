@@ -5,15 +5,19 @@ podas distintas: la dirección dominante de $W_O$ bajo intervención
 libre, suave y dura* (EN: *Same function, different pruning: the
 dominant direction of $W_O$ under free, soft, and hard intervention*).
 
-La dirección dominante de la proyección de salida de una cabeza de
-atención, $v_1(W_O)$, se usa habitualmente para podar cabezas
-redundantes, interpretar su papel o enrutar información. Este trabajo
-muestra que esa dirección no es identificable —una libertad de gauge
+Leer la geometría de la proyección de salida de una cabeza de
+atención es el proxy más barato imaginable para su papel: tomar la
+dirección dominante $v_1(W_O)$ para podar cabezas redundantes,
+interpretarlas o enrutar información no exige forwards ni gradientes.
+Este trabajo cierra esa vía antes de que se extienda, mostrando que
+esa dirección no es identificable —una libertad de gauge
 del sector valor-salida la desplaza a voluntad sin tocar la función—,
 que esa no-identificabilidad tiene una consecuencia medible (la
-decisión de poda que produce cambia bajo gauge en más del 90 % de los
-casos, tanto en un ViT afinado en visión como en un transformer de
-lenguaje preentrenado, sin entrenar nada), y que el acoplamiento entre
+decisión de poda que produce cambia bajo reparametrización genérica en
+más del 90 % de los casos, tanto en un ViT afinado en visión como en
+un transformer de lenguaje preentrenado, sin entrenar nada; y en el
+gauge que el entrenamiento deja, sin inyectar ninguno, las dos
+decisiones siguen sin coincidir), y que el acoplamiento entre
 esa geometría y la función es unidireccional: una sonda que la separa
 angularmente hasta el símplex no mueve la función, pero imponer esa
 misma separación por construcción sí la daña. Como instrumento
@@ -28,9 +32,13 @@ Hugging Face (ver `## Datos y pesos` más abajo).
 
 - Python 3.11; PyTorch y [`timm`](https://github.com/huggingface/pytorch-image-models)
   para las columnas ViT-B/16 y ViT-L/16, [`transformers`](https://github.com/huggingface/transformers)
-  para la columna de lenguaje (Pythia-410M) — versiones exactas
-  fijadas en [`pyproject.toml`](pyproject.toml)/[`uv.lock`](uv.lock),
-  congeladas desde el entorno que produjo cada resultado del paper.
+  para la columna de lenguaje (Pythia-410M). Dos ficheros, con dos
+  papeles distintos: [`requirements_frozen.txt`](requirements_frozen.txt)
+  es el `pip freeze` del entorno que produjo cada resultado del paper
+  ---certificado el 11-08-2026---, y es lo que hay que instalar para
+  reproducir exactamente; [`pyproject.toml`](pyproject.toml) y
+  [`uv.lock`](uv.lock) declaran una resolución compatible, útil para
+  una instalación nueva, pero no idéntica a aquel entorno.
 - Una sola GPU NVIDIA (desarrollado en una RTX 5090, 32 GB, CUDA
   13.0); la columna de lenguaje es forma cerrada sobre pesos y corre
   en CPU.
@@ -147,7 +155,7 @@ pytest tests/ -q
 - CSV que respaldan cada tabla y figura del paper: <https://huggingface.co/datasets/ManPla/angular-separation-vit-results>
   (DOI: [10.57967/hf/9743](https://doi.org/10.57967/hf/9743))
 - Código (este repositorio), archivado en Zenodo: <https://github.com/mmunozpl/angular-separation-vit>
-  (DOI: [10.5281/zenodo.21630535](https://doi.org/10.5281/zenodo.21630535))
+  (DOI: [10.5281/zenodo.21630534](https://doi.org/10.5281/zenodo.21630534))
 
 ## Cómo citar
 
@@ -161,8 +169,8 @@ botón «Cite this repository», generado desde
   title   = {Same function, different pruning: the dominant direction
              of W_O under free, soft, and hard intervention},
   year    = {2026},
-  version = {2.0.0},
-  doi     = {10.5281/zenodo.21630535},
+  version = {v6.0},
+  doi     = {10.5281/zenodo.21630534},
   url     = {https://github.com/mmunozpl/angular-separation-vit}
 }
 ```

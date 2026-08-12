@@ -158,13 +158,40 @@ def w_v_por_cabeza(
         dim_cabeza: d_h.
 
     returns:
-        tensor [h, dh, d] con w_v^(h) por cabeza.
+        tensor [h, dh, d] con w_v^(h) por cabeza. para la
+        convención traspuesta, usar `w_v_columnas`.
     """
     w = modelo.blocks[capa].attn.qkv.weight                # [3d, d]
     base = 2 * w.shape[1]                                   # inicio de v
     return torch.stack([
         w[base + h * dim_cabeza:base + (h + 1) * dim_cabeza, :]
         for h in range(n_cabezas)])
+
+
+def w_v_columnas(
+    modelo,
+    capa: int,
+    n_cabezas: int,
+    dim_cabeza: int,
+) -> torch.Tensor:
+    """w_v^(h) traspuesta, en la convención de columnas [h, d, dh].
+
+    la misma matriz que `w_v_por_cabeza`, con los ejes al revés. las
+    dos existen porque el aparato las necesita en las dos formas ---la
+    factorización qr del circuito ov pide [h, d, dh]---, y llevan
+    nombres distintos justamente para que no se confundan: un cambio
+    silencioso entre ambas produce ángulos plausibles y falsos.
+
+    args:
+        modelo: el vit, o cualquier portador con la misma interfaz.
+        capa: índice de la capa.
+        n_cabezas: cabezas h.
+        dim_cabeza: d_h.
+
+    returns:
+        tensor [h, d, dh] con w_v^(h) por cabeza.
+    """
+    return w_v_por_cabeza(modelo, capa, n_cabezas, dim_cabeza).transpose(1, 2)
 
 
 def w_qk_por_cabeza(

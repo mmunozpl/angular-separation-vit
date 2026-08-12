@@ -25,6 +25,7 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.carga import ARQUITECTURAS, cargar_probe_tensor, cargar_vit_base
+from src.nucleo_lectura import firma_exacta  # movida al núcleo
 from src.firma_funcional import w_o_por_cabeza, w_v_por_cabeza
 from src.gauge_flip import aplica_gauge_ov
 
@@ -63,26 +64,6 @@ def carga_modelo(ckpt: str):
 
 
 @torch.no_grad()
-def firma_exacta(matriz: torch.Tensor, lado: str) -> torch.Tensor:
-    """vector singular dominante por svd exacta (no iteración).
-
-    el diagnóstico de invariancia exige svd exacta: medirla con iteración
-    de potencia introduce ruido de init que la enmascara.
-
-    args:
-        matriz: tensor [h, m, n] con h matrices.
-        lado: 'izq' devuelve u[:,0] (en R^m); 'der' devuelve vh[0] (R^n).
-
-    returns:
-        tensor [h, k] con la dirección unitaria por cabeza.
-    """
-    out = []
-    for h in range(matriz.shape[0]):
-        u, _, vh = torch.linalg.svd(matriz[h], full_matrices=False)
-        out.append(u[:, 0] if lado == "izq" else vh[0])
-    return torch.stack(out)
-
-
 @torch.no_grad()
 def deriva(antes: torch.Tensor, despues: torch.Tensor) -> float:
     """deriva media entre firmas, 1 - |cos|, sin signo.

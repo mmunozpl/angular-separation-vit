@@ -32,6 +32,7 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.run_fase_G import carga_modelo, firma_exacta
+from src.nucleo_lectura import decisiones  # movida al núcleo
 from scripts.run_fase_0 import firma_computada, gram_contexto
 from src.carga import cargar_probe_tensor
 from src.firma_funcional import CapturaContexto, w_o_por_cabeza
@@ -43,27 +44,6 @@ N_CABEZAS, DIM_CABEZA = 12, 64
 ESCALA_FUERZA = 8.0    # desv_r ~ 1.0, régimen saturado (tab:gauge)
 N_GAUGES = 5
 K_PODA = 3
-
-
-def decisiones(firmas: torch.Tensor) -> tuple[tuple[int, int],
-                                              list[int]]:
-    """par más redundante y top-k de poda desde unas firmas.
-
-    Args:
-        firmas: tensor [h, d] de direcciones unitarias por cabeza.
-
-    Returns:
-        tupla (par_top ordenado, top-k de cabezas por redundancia
-        media descendente).
-    """
-    c = (firmas @ firmas.t()).abs().clamp(max=1.0)
-    c.fill_diagonal_(0.0)
-    h = c.shape[0]
-    idx = int(torch.argmax(c).item())
-    par = tuple(sorted((idx // h, idx % h)))
-    red_media = c.sum(dim=1) / (h - 1)
-    topk = torch.argsort(red_media, descending=True)[:K_PODA]
-    return par, [int(i) for i in topk]
 
 
 def grams_del_modelo(
@@ -128,8 +108,8 @@ def main() -> None:
         base: dict[int, dict] = {}
         for capa in range(len(modelo.blocks)):
             v1_wo, firma = par_de_firmas(modelo, gram0[capa], capa)
-            base[capa] = {"pesos": decisiones(v1_wo),
-                          "firma": decisiones(firma)}
+            base[capa] = {"pesos": decisiones(v1_wo, K_PODA),
+                          "firma": decisiones(firma, K_PODA)}
             for crit in ("pesos", "firma"):
                 par, topk = base[capa][crit]
                 filas.append({
@@ -146,8 +126,8 @@ def main() -> None:
                                 escala_id=escala)
                 gram_g = grams_del_modelo(m2, imgs, disp)
                 v1_g, firma_g = par_de_firmas(m2, gram_g[capa], capa)
-                post = {"pesos": decisiones(v1_g),
-                        "firma": decisiones(firma_g)}
+                post = {"pesos": decisiones(v1_g, K_PODA),
+                        "firma": decisiones(firma_g, K_PODA)}
                 for crit in ("pesos", "firma"):
                     par0, topk0 = base[capa][crit]
                     par1, topk1 = post[crit]

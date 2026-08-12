@@ -5,15 +5,17 @@ pruning: the dominant direction of $W_O$ under free, soft, and hard
 intervention* (ES: *Dos modelos idénticos, dos podas distintas: la
 dirección dominante de $W_O$ bajo intervención libre, suave y dura*).
 
-The dominant direction of an attention head's output projection,
-$v_1(W_O)$, is routinely used to prune redundant heads, interpret
-their role, or route information between them. This work shows that
-direction is not identifiable —a gauge freedom of the value-output
+Reading the geometry of an attention head's output projection is the
+cheapest proxy imaginable for its role: taking the dominant direction
+$v_1(W_O)$ to prune redundant heads, interpret them, or route
+information needs no forwards and no gradients. This work closes that
+route before it spreads, showing that direction is not identifiable —a gauge freedom of the value-output
 sector displaces it at will without touching the function—, that this
 non-identifiability has a measurable consequence (the pruning decision
-it produces changes under gauge in more than 90% of cases, both on a
-vision-finetuned ViT and on a pretrained language transformer, without
-any training), and that the coupling between that geometry and the
+it produces changes under generic reparametrization in more than 90% of
+cases, both on a vision-finetuned ViT and on a pretrained language
+transformer, without any training; and in the gauge training leaves,
+with none injected, the two decisions still fail to coincide), and that the coupling between that geometry and the
 function is one-directional: a probe that angularly separates it up
 to the simplex does not move the function, but imposing that same
 separation by construction does damage it. As the correct instrument,
@@ -29,9 +31,13 @@ on Hugging Face (see `## Data and weights` below).
 
 - Python 3.11; PyTorch and [`timm`](https://github.com/huggingface/pytorch-image-models)
   for the ViT-B/16 and ViT-L/16 columns, [`transformers`](https://github.com/huggingface/transformers)
-  for the language column (Pythia-410M) — exact versions locked in
-  [`pyproject.toml`](pyproject.toml)/[`uv.lock`](uv.lock), frozen from
-  the environment that produced every result in the paper.
+  for the language column (Pythia-410M). Two files, two distinct
+  roles: [`requirements_frozen.txt`](requirements_frozen.txt) is the
+  `pip freeze` of the environment that produced every result in the
+  paper ---certified 2026-08-11---, and is what to install for an
+  exact reproduction; [`pyproject.toml`](pyproject.toml) and
+  [`uv.lock`](uv.lock) declare a compatible resolution, useful for a
+  fresh install but not identical to that environment.
 - A single NVIDIA GPU (developed on an RTX 5090, 32 GB, CUDA 13.0);
   the language column is closed-form over weights and runs on CPU.
 - Datasets (ImageNet-1k / ImageNet-100) are downloaded manually; paths
@@ -146,7 +152,7 @@ pytest tests/ -q
 - CSVs backing every table and figure in the paper: <https://huggingface.co/datasets/ManPla/angular-separation-vit-results>
   (DOI: [10.57967/hf/9743](https://doi.org/10.57967/hf/9743))
 - Code (this repository), archived on Zenodo: <https://github.com/mmunozpl/angular-separation-vit>
-  (DOI: [10.5281/zenodo.21630535](https://doi.org/10.5281/zenodo.21630535))
+  (DOI: [10.5281/zenodo.21630534](https://doi.org/10.5281/zenodo.21630534))
 
 ## How to cite
 
@@ -160,8 +166,8 @@ offers a "Cite this repository" button, generated from
   title   = {Same function, different pruning: the dominant direction
              of W_O under free, soft, and hard intervention},
   year    = {2026},
-  version = {2.0.0},
-  doi     = {10.5281/zenodo.21630535},
+  version = {v6.0},
+  doi     = {10.5281/zenodo.21630534},
   url     = {https://github.com/mmunozpl/angular-separation-vit}
 }
 ```

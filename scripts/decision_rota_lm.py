@@ -30,7 +30,7 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.decision_rota import decisiones
+from src.nucleo_lectura import decisiones
 
 MODELO_ID = "EleutherAI/pythia-410m"
 SALIDA = "artifacts/logs/decision_rota/decision_rota_lm.csv"
@@ -63,14 +63,19 @@ def carga_modelo(dtype: torch.dtype = torch.float32):
     return modelo
 
 
-def w_v_por_cabeza(
+def w_v_cabeza_neox(
     attn, h_idx: int, n_cabezas: int, dim_cabeza: int,
 ) -> torch.Tensor:
     """filas de valor w_v^(h) desde el qkv fusionado de gpt-neox.
 
-    el orden es por-cabeza (no por-bloque como en timm): cada cabeza
-    ocupa ``3*dim_cabeza`` filas contiguas ``[q_h|k_h|v_h]``; v_h es
-    el último tercio de ese bloque.
+    **layout distinto al de timm, y de ahí el nombre propio.** neox
+    entrelaza por cabeza ---cada una ocupa ``3*dim_cabeza`` filas
+    contiguas ``[q_h|k_h|v_h]``, y v_h es el último tercio---, mientras
+    timm agrupa por bloque ---todas las q, luego todas las k, luego
+    todas las v---. confundirlos no rompe nada visible: produce
+    ángulos plausibles y falsos. la lectura de timm vive en
+    `src.firma_funcional` con sus dos convenciones de forma; esta es
+    la tercera y por eso lleva sufijo.
 
     Args:
         attn: módulo de atención gpt-neox de una capa.
@@ -87,7 +92,7 @@ def w_v_por_cabeza(
     return w[base:base + dim_cabeza, :]
 
 
-def b_v_por_cabeza(attn, h_idx: int, dim_cabeza: int) -> torch.Tensor:
+def b_v_cabeza_neox(attn, h_idx: int, dim_cabeza: int) -> torch.Tensor:
     """sesgo de valor b_v^(h) desde el qkv fusionado.
 
     Args:
@@ -103,7 +108,7 @@ def b_v_por_cabeza(attn, h_idx: int, dim_cabeza: int) -> torch.Tensor:
     return b[base:base + dim_cabeza]
 
 
-def w_o_por_cabeza(attn, h_idx: int, dim_cabeza: int) -> torch.Tensor:
+def w_o_cabeza_neox(attn, h_idx: int, dim_cabeza: int) -> torch.Tensor:
     """proyección de salida w_o^(h) desde ``dense``.
 
     Args:
@@ -175,14 +180,14 @@ def sanity_troceo(modelo, capa: int, n_cabezas: int, dim_cabeza: int,
 
     err_v = 0.0
     for h in range(n_cabezas):
-        w_v = w_v_por_cabeza(attn, h, n_cabezas, dim_cabeza)
-        b_v = b_v_por_cabeza(attn, h, dim_cabeza)
+        w_v = w_v_cabeza_neox(attn, h, n_cabezas, dim_cabeza)
+        b_v = b_v_cabeza_neox(attn, h, dim_cabeza)
         v_mio = qkv_in @ w_v.t() + b_v
         err_v = max(err_v, (v_mio - v_real[:, h]).abs().max().item())
 
     recon = torch.zeros_like(dense_out)
     for h in range(n_cabezas):
-        w_o = w_o_por_cabeza(attn, h, dim_cabeza)
+        w_o = w_o_cabeza_neox(attn, h, dim_cabeza)
         chunk = dense_in[..., h * dim_cabeza:(h + 1) * dim_cabeza]
         recon = recon + chunk @ w_o.t()
     recon = recon + attn.dense.bias
@@ -260,10 +265,10 @@ def circuito_ov(attn, n_cabezas: int, dim_cabeza: int) -> torch.Tensor:
         tensor [h, d, d] con el circuito por cabeza.
     """
     w_v = torch.stack([
-        w_v_por_cabeza(attn, h, n_cabezas, dim_cabeza).double()
+        w_v_cabeza_neox(attn, h, n_cabezas, dim_cabeza).double()
         for h in range(n_cabezas)])
     w_o = torch.stack([
-        w_o_por_cabeza(attn, h, dim_cabeza).double()
+        w_o_cabeza_neox(attn, h, dim_cabeza).double()
         for h in range(n_cabezas)])
     return torch.einsum("hed,hfe->hdf", w_v, w_o)
 
@@ -282,7 +287,7 @@ def v1_wo_por_cabeza(attn, n_cabezas: int, dim_cabeza: int) -> torch.Tensor:
     """
     dirs = []
     for h in range(n_cabezas):
-        w_o = w_o_por_cabeza(attn, h, dim_cabeza)  # [d, dh]
+        w_o = w_o_cabeza_neox(attn, h, dim_cabeza)  # [d, dh]
         vh = torch.linalg.svd(w_o, full_matrices=False).U[:, 0]
         dirs.append(vh)
     return torch.stack(dirs)
@@ -329,7 +334,7 @@ def main() -> None:
         attn = modelo.gpt_neox.layers[capa].attention
         circ0 = circuito_ov(attn, n_cabezas, dim_cabeza)
         v1_0 = v1_wo_por_cabeza(attn, n_cabezas, dim_cabeza)
-        par0, topk0 = decisiones(v1_0)
+        par0, topk0 = decisiones(v1_0, K_PODA)
         filas.append({
             "arch": "pythia410m", "capa": capa, "gauge_idx": 0,
             "criterio": "pesos", "par_top": str(par0),
@@ -348,7 +353,7 @@ def main() -> None:
                 f"circuito OV no invariante en capa {capa}, "
                 f"gauge {g}: deriva={deriva_ov:.2e}")
             v1_g = v1_wo_por_cabeza(attn2, n_cabezas, dim_cabeza)
-            par1, topk1 = decisiones(v1_g)
+            par1, topk1 = decisiones(v1_g, K_PODA)
             solape = len(set(topk0) & set(topk1)) / K_PODA
             filas.append({
                 "arch": "pythia410m", "capa": capa,

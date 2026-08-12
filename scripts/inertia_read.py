@@ -12,6 +12,7 @@ import argparse
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 
 def s_func_convergido(ruta: str, ultimas: int = 5) -> float:
@@ -88,7 +89,25 @@ def main() -> None:
     print(f"  Δvsm  media={d_vsm.mean():+.4f}  std={d_vsm.std(ddof=1):.4f}"
           f"  signos={sv}")
 
+    # el intervalo que el paper declara: pareado por semilla, t de
+    # student con n-1 gl. es el unico valido para este contraste; la
+    # variante vs-media de abajo trata la media de las base como
+    # constante conocida e infravalora la incertidumbre a la mitad
+    print("\n-- IC del 95 % (el que el paper imprime) --")
+    gl = len(d_par) - 1
+    se_par = float(d_par.std(ddof=1) / np.sqrt(len(d_par)))
+    tq = float(stats.t.ppf(0.975, gl))
+    lo, hi = d_par.mean() - tq * se_par, d_par.mean() + tq * se_par
+    print(f"  pareado, t({gl}): Δ={d_par.mean():+.4f}  SE={se_par:.5f}"
+          f"  IC95=[{lo:+.4f},{hi:+.4f}]  incluye cero: {lo <= 0 <= hi}")
+    se_w = float(np.sqrt((bvals.std(ddof=1) ** 2
+                          + blvals.std(ddof=1) ** 2) / len(d_par)))
+    print(f"  contraste: SE de Welch dos muestras={se_w:.5f} "
+          f"(del orden del pareado, como debe)")
+
     print("\n-- separación de cero dado el spread (vs-media) --")
+    print("  [NO usar como IC del contraste: ignora la incertidumbre")
+    print("   de la media de las base. Se conserva como descriptor.]")
     sem = float(d_vsm.std(ddof=1) / np.sqrt(len(d_vsm)))
     print(f"  media Δvsm={d_vsm.mean():+.4f}  ±1.96·sem="
           f"[{d_vsm.mean()-1.96*sem:+.4f},{d_vsm.mean()+1.96*sem:+.4f}]")
