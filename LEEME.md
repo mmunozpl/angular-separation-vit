@@ -180,7 +180,7 @@ botón «Cite this repository», generado desde
   title   = {The dominant direction of W_O is not identifiable: gauge
              orbit, zero certified radius, and consequences for pruning},
   year    = {2026},
-  version = {v7.0},
+  version = {v7.0.1},
   doi     = {10.5281/zenodo.21630534},
   url     = {https://github.com/mmunozpl/angular-separation-vit}
 }

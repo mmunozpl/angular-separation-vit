@@ -11,3 +11,9 @@
   canónica QR y familia diagonal alineada; 10 instancias).
 - Nuevos: `scripts/gauge_dR.py` (E0), `scripts/poda_nulo.py` (E1),
   `scripts/identidad_mitades.py` (E2), `paper/refs.bib`, `prereg/`.
+
+## 2026-09-22 (v7.0.1)
+
+- Declaración sobre el uso de herramientas de IA: redacción fijada por
+  el autor en los dos idiomas; PDF de `paper/` regenerados. Sin cambio
+  de código ni de resultados.
