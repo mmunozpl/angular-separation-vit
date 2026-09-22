@@ -1,15 +1,24 @@
-# La dirección dominante de W_O no es identificable
+# [Preprint] La dirección dominante de $W_O$ no es identificable: órbita de gauge, radio certificado nulo y consecuencias para la poda
 
-Implementación de referencia del manuscrito *La dirección dominante de $W_O$ no es identificable: órbita de gauge, radio certificado nulo y consecuencias para la poda* (EN: *The dominant direction of $W_O$ is not identifiable: gauge orbit, zero certified radius, and consequences for pruning*).
+🇪🇸 Español · 🇬🇧 [English](README.md)
 
-La factorización valor-salida de una cabeza de atención no es única: para toda $R\in GL(d_h)$, la sustitución $(W_v,b_v,W_O)\to(W_vR,b_vR,R^{-1}W_O)$ deja la función intacta, y hace de la dirección dominante $v_1(W_O^{(h)})$ un proxy estático tentador para poda, interpretación o routing. Probamos que esa lectura no es identificable: su órbita bajo el gauge es la esfera unitaria completa del espacio fila, y ningún umbral admisible de similitud sobre ella admite radio certificado funcional positivo. Con espectro no degenerado, solo la clase conforme ortogonal la deja invariante para toda $W_O$, y toda lectura invariante de $W_O$ sola factoriza por su espacio fila. La consecuencia se mide: el par que la poda por pesos declara más redundante cambia bajo reparametrización genérica en más del $90$ % de los casos en un ViT y —por la misma forma cerrada, sin entrenar— en un transformer de lenguaje. En el gauge que el entrenamiento deja, la factorización se acerca al balance sin que las decisiones coincidan. Una sonda angular que separa las direcciones hasta el umbral del símplex no produce coste funcional detectable; la imposición dura sí. La firma de respuesta $v_1(C_h^P)$, condicionada a la sonda y gauge-invariante, mide diversidad funcional por cabeza. Código, datos y demo con DOI.
+**Manuel Muñoz Plá** · [ORCID 0009-0000-5714-912X](https://orcid.org/0009-0000-5714-912X)
+
+[![Zenodo](https://img.shields.io/badge/Zenodo-10.5281%2Fzenodo.21630534-009e73)](https://doi.org/10.5281/zenodo.21630534)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-Dataset-ffd21e)](https://huggingface.co/datasets/ManPla/angular-separation-vit-results)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-Model-ffd21e)](https://huggingface.co/ManPla/angular-separation-vit-checkpoints)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-Space-ffd21e)](https://huggingface.co/spaces/ManPla/angular-separation-vit-demo)
+[![ORCID](https://img.shields.io/badge/ORCID-0009--0000--5714--912X-a6ce39)](https://orcid.org/0009-0000-5714-912X)
+[![Web](https://img.shields.io/badge/Web-manpla.net-009e73)](https://manpla.net)
+[![License](https://img.shields.io/badge/License-Apache--2.0-009e73)](LICENSE)
+[![Cite](https://img.shields.io/badge/Cite-BibTeX-009e73)](#cómo-citar)
+
+**Resumen:** La factorización valor-salida de una cabeza de atención no es única: para toda $R\in GL(d_h)$, la sustitución $(W_v,b_v,W_O)\to(W_vR,b_vR,R^{-1}W_O)$ deja la función intacta, y hace de la dirección dominante $v_1(W_O^{(h)})$ un proxy estático tentador para poda, interpretación o routing. Probamos que esa lectura no es identificable: su órbita bajo el gauge es la esfera unitaria completa del espacio fila, y ningún umbral admisible de similitud sobre ella admite radio certificado funcional positivo. Con espectro no degenerado, solo la clase conforme ortogonal la deja invariante para toda $W_O$, y toda lectura invariante de $W_O$ sola factoriza por su espacio fila. La consecuencia se mide: el par que la poda por pesos declara más redundante cambia bajo reparametrización genérica en más del $90$ % de los casos en un ViT y —por la misma forma cerrada, sin entrenar— en un transformer de lenguaje. En el gauge que el entrenamiento deja, la factorización se acerca al balance sin que las decisiones coincidan. Una sonda angular que separa las direcciones hasta el umbral del símplex no produce coste funcional detectable; la imposición dura sí. La firma de respuesta $v_1(C_h^P)$, condicionada a la sonda y gauge-invariante, mide diversidad funcional por cabeza. Código, datos y demo con DOI.
 
 El código y las medidas se publican aquí, con el prerregistro de cada
 experimento en [`prereg/`](prereg/); los CSV que respaldan cada tabla
 y los checkpoints de reproducción se publican por separado en Hugging
 Face (ver `## Datos y pesos` más abajo).
-
-> Sitio del autor: [manpla.net](https://manpla.net/es/about) · publicaciones: [manpla.net/es/papers](https://manpla.net/es/papers)
 
 ## Requisitos
 

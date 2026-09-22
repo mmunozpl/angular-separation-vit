@@ -1,16 +1,25 @@
-# The dominant direction of W_O is not identifiable
+# [Preprint] The dominant direction of $W_O$ is not identifiable: gauge orbit, zero certified radius, and consequences for pruning
 
-Reference implementation of the manuscript *The dominant direction of $W_O$ is not identifiable: gauge orbit, zero certified radius, and consequences for pruning* (ES: *La dirección dominante de $W_O$ no es identificable: órbita de gauge, radio certificado nulo y consecuencias para la poda*).
+🇬🇧 English · 🇪🇸 [Español](LEEME.md)
 
-The value-output factorisation of an attention head is not unique: for every $R\in GL(d_h)$, the substitution $(W_v,b_v,W_O)\to(W_vR,b_vR,R^{-1}W_O)$ leaves the function intact, and makes the dominant direction $v_1(W_O^{(h)})$ a tempting static proxy for pruning, interpretation or routing. We prove that this readout is not identifiable: its orbit under the gauge is the full unit sphere of the row space, and no admissible similarity threshold on it admits a positive functional certified radius. With a non-degenerate spectrum, only the conformal orthogonal class leaves it invariant for every $W_O$, and every invariant readout of $W_O$ alone factors through its row space. The consequence is measured: the pair that weight-based pruning declares most redundant changes under generic reparametrisation in more than $90$ % of cases on a ViT and —by the same closed form, without training— on a language transformer. In the gauge training leaves, the factorisation approaches balance without the decisions coinciding. An angular probe that separates the directions up to the simplex threshold produces no detectable functional cost; the hard imposition does. The response signature $v_1(C_h^P)$, probe-conditioned and gauge-invariant, measures functional diversity per head. Code, data and demo with DOIs.
+**Manuel Muñoz Plá** · [ORCID 0009-0000-5714-912X](https://orcid.org/0009-0000-5714-912X)
+
+[![Zenodo](https://img.shields.io/badge/Zenodo-10.5281%2Fzenodo.21630534-009e73)](https://doi.org/10.5281/zenodo.21630534)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-Dataset-ffd21e)](https://huggingface.co/datasets/ManPla/angular-separation-vit-results)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-Model-ffd21e)](https://huggingface.co/ManPla/angular-separation-vit-checkpoints)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-Space-ffd21e)](https://huggingface.co/spaces/ManPla/angular-separation-vit-demo)
+[![ORCID](https://img.shields.io/badge/ORCID-0009--0000--5714--912X-a6ce39)](https://orcid.org/0009-0000-5714-912X)
+[![Web](https://img.shields.io/badge/Web-manpla.net-009e73)](https://manpla.net)
+[![License](https://img.shields.io/badge/License-Apache--2.0-009e73)](LICENSE)
+[![Cite](https://img.shields.io/badge/Cite-BibTeX-009e73)](#how-to-cite)
+
+**Abstract:** The value-output factorisation of an attention head is not unique: for every $R\in GL(d_h)$, the substitution $(W_v,b_v,W_O)\to(W_vR,b_vR,R^{-1}W_O)$ leaves the function intact, and makes the dominant direction $v_1(W_O^{(h)})$ a tempting static proxy for pruning, interpretation or routing. We prove that this readout is not identifiable: its orbit under the gauge is the full unit sphere of the row space, and no admissible similarity threshold on it admits a positive functional certified radius. With a non-degenerate spectrum, only the conformal orthogonal class leaves it invariant for every $W_O$, and every invariant readout of $W_O$ alone factors through its row space. The consequence is measured: the pair that weight-based pruning declares most redundant changes under generic reparametrisation in more than $90$ % of cases on a ViT and —by the same closed form, without training— on a language transformer. In the gauge training leaves, the factorisation approaches balance without the decisions coinciding. An angular probe that separates the directions up to the simplex threshold produces no detectable functional cost; the hard imposition does. The response signature $v_1(C_h^P)$, probe-conditioned and gauge-invariant, measures functional diversity per head. Code, data and demo with DOIs.
 
 Code and measurement scripts are published here, with the
 pre-registration of every experiment under [`prereg/`](prereg/); the
 CSVs backing every table and the reproduction checkpoints are
 published separately on Hugging Face (see `## Data and weights`
 below).
-
-> Author's site: [manpla.net](https://manpla.net/en/about) · publications: [manpla.net/en/papers](https://manpla.net/en/papers)
 
 ## Requirements
 
