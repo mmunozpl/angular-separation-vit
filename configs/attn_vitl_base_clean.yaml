@@ -36,7 +36,6 @@ optimization:
   weight_decay: 0.05
   batch_size: 64
   epochs: 30
-  warmup_epochs: 3
 
 device: cuda
 log_dir: artifacts/logs/vitl_clean

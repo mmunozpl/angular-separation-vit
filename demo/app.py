@@ -612,9 +612,11 @@ QSM = {"es": f"""
 
 Una cabeza de atención escribe en el flujo residual a través de dos
 matrices, $W_v$ y $W_O$. Esa factorización **no es única**: para
-cualquier $R$ invertible, sustituir $W_v \\to W_v R$ y
+cualquier $R$ invertible, sustituir $W_v \\to W_v R$, $b_v \\to b_v R$ y
 $W_O \\to R^{{-1}} W_O$ deja la función del modelo exactamente igual,
-porque el producto $W_v W_O$ ---el circuito OV--- no cambia.
+porque el producto $W_v W_O$ ---el circuito OV--- y el término de
+sesgo $b_v W_O$ no cambian. Es la transformación que este código
+aplica.
 
 La dirección dominante $v_1(W_O)$ **no** es función de ese producto,
 así que se mueve con $R$ mientras el modelo calcula lo mismo: su
@@ -636,9 +638,11 @@ Código, datos y certificación de la órbita: <{DOI}>
 
 An attention head writes into the residual stream through two
 matrices, $W_v$ and $W_O$. That factorization is **not unique**: for
-any invertible $R$, substituting $W_v \\to W_v R$ and
+any invertible $R$, substituting $W_v \\to W_v R$, $b_v \\to b_v R$ and
 $W_O \\to R^{{-1}} W_O$ leaves the model's function exactly as it was,
-because the product $W_v W_O$ ---the OV circuit--- does not change.
+because the product $W_v W_O$ ---the OV circuit--- and the bias term
+$b_v W_O$ do not change. That is the transformation this code
+applies.
 
 The dominant direction $v_1(W_O)$ is **not** a function of that
 product, so it moves with $R$ while the model computes the same

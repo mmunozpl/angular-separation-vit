@@ -33,32 +33,43 @@ import sys
 
 ES = "paper/separacion_angular_paper.pdf"
 EN = "paper/angular_separation_paper_en.pdf"
-PORT = "paper_tmlr/main.pdf"
+PORT = "paper_SIMODS/main.pdf"
+SM = "paper_SIMODS/supplement.pdf"
+# el port JMLR no parte suplemento: toda cifra viaja en su único PDF
+JMLR = "Paper_X/jmlr/main_jmlr.pdf"
+JMLR_ES = "Paper_X/jmlr/main_jmlr_es.pdf"   # artefacto de lectura del autor
 
-# cifra en su forma española -> (qué es, ¿viaja al port ciego?).
+# cifra en su forma española -> (qué es, destino en el envío:
+# 'port' = manuscrito principal, 'sm' = suplemento; el oráculo sigue
+# a cada cifra adonde la mudanza la haya llevado).
 # la forma inglesa se deriva cambiando la coma por punto
 CIFRAS = {
     # tab:decision, las cuatro celdas que el bug de 2026-08 dejó al aire
-    "92,7": ("decisión rota por pesos, visión", True),
-    "0,378": ("solape de poda, visión", True),
-    "90,0": ("decisión rota por pesos, lenguaje", True),
-    "0,379": ("solape de poda, lenguaje", True),
+    "92,7": ("decisión rota por pesos, visión", "port"),
+    "0,378": ("solape de poda, visión", "port"),
+    "90,0": ("decisión rota por pesos, lenguaje", "port"),
+    "0,379": ("solape de poda, lenguaje", "port"),
     # tab:gauge / fase g
-    "4,05": ("desv_R de la fuerza máxima", True),
-    "0,66": ("deriva a media fuerza", True),
-    "0,83": ("deriva de v1(W_O) en régimen saturado", True),
+    "4,05": ("desv_R de la fuerza máxima", "port"),
+    "0,66": ("deriva a media fuerza", "port"),
+    "0,83": ("deriva de v1(W_O) en régimen saturado", "port"),
     # órbita certificada (app:orbita)
-    "3960": ("pares con theta* alcanzado", True),
-    "14,7": ("suelo angular medido", True),
+    "3960": ("pares con theta* alcanzado", "port"),
+    "14,7": ("suelo angular medido", "port"),
     # intervalo del confirmatorio
-    "0,0052": ("extremo inferior del IC pareado", True),
-    "0,0077": ("extremo superior del IC pareado", True),
+    "0,0052": ("extremo inferior del IC pareado", "port"),
+    "0,0077": ("extremo superior del IC pareado", "port"),
     # trío multi-arquitectura
-    "24/24": ("capas con residuo en dinov2", True),
-    "+0,052": ("s_func de la variante dura", True),
-    "4,40": ("coste uniforme en puntos", True),
+    "24/24": ("capas con residuo en dinov2", "port"),
+    "+0,052": ("s_func de la variante dura", "port"),
+    "4,40": ("coste uniforme en puntos", "port"),
     # gauge natural (M1) y balance
-    "64,06": ("alineación inicial de dinov2 ViT-L/14", True),
+    "64,06": ("alineación inicial de dinov2 ViT-L/14", "port"),
+    # crossover Q·K, mudado al suplemento con el apéndice B
+    "+0,403": ("salto del cruce en ViT-L", "sm"),
+    "+0,375": ("predominio profundo en fallo, ViT-L", "sm"),
+    "0,026": ("r_QK antes del cruce en la ancla", "sm"),
+    "0,51": ("r_QK tras el cruce en la ancla", "sm"),
 }
 
 
@@ -87,27 +98,33 @@ def main() -> None:
     ap.add_argument("--es", default=ES)
     ap.add_argument("--en", default=EN)
     ap.add_argument("--port", default=PORT)
+    ap.add_argument("--sm", default=SM)
+    ap.add_argument("--jmlr", default=JMLR)
+    ap.add_argument("--jmlr-es", default=JMLR_ES)
     args = ap.parse_args()
-    t_es, t_en, t_pt = (texto(args.es), texto(args.en),
-                        texto(args.port))
+    t_es, t_en, t_pt, t_sm, t_jm, t_jmes = (
+        texto(args.es), texto(args.en), texto(args.port),
+        texto(args.sm), texto(args.jmlr),
+        texto(args.jmlr_es))
 
     fallos = []
-    print(f"{'cifra':>8s}  {'ES':>3s} {'EN':>3s} {'port':>4s}   qué es")
-    for es, (qué, al_port) in CIFRAS.items():
+    print(f"{'cifra':>8s}  {'ES':>3s} {'EN':>3s} {'dest':>4s} {'JMLR':>4s} {'J-ES':>4s}   qué es")
+    for es, (qué, destino) in CIFRAS.items():
         en = es.replace(",", ".")
-        hay = (es in t_es, en in t_en,
-               (en in t_pt) if al_port else None)
-        marca = ["sí" if h else ("--" if h is None else "NO")
-                 for h in hay]
+        t_d = t_pt if destino == "port" else t_sm
+        hay = (es in t_es, en in t_en, en in t_d, en in t_jm,
+               es in t_jmes)
+        marca = ["sí" if h else "NO" for h in hay]
         print(f"  {es:>6s}  {marca[0]:>3s} {marca[1]:>3s} "
-              f"{marca[2]:>4s}   {qué}")
-        for nombre, h in zip(("ES", "EN", "port"), hay):
+              f"{marca[2]:>4s} {marca[3]:>4s} {marca[4]:>4s}   {qué} [{destino}]")
+        for nombre, h in zip(("ES", "EN", destino, "JMLR",
+                              "JMLR-ES"), hay):
             if h is False:
                 fallos.append(f"{es} ({qué}) falta en {nombre}")
 
     n = len(CIFRAS)
-    total = n * 2 + sum(1 for _, (_, p) in CIFRAS.items() if p)
-    print(f"\n{total} comprobaciones sobre {n} cifras y 3 PDF")
+    total = n * 5
+    print(f"\n{total} comprobaciones sobre {n} cifras y 6 PDF")
     if fallos:
         print(f"[error] {len(fallos)} fallo(s):")
         for f in fallos:

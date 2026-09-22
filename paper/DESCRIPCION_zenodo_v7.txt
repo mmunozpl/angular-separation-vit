@@ -1,0 +1,14 @@
+Descripción para Zenodo, versión v7.0 (2026-09-22). Se pega tal cual.
+
+--- párrafo 1 ---
+Code, measurement scripts and pre-registrations for a study of the value-output gauge in Transformer attention heads. The value-output factorisation of an attention head is not unique: for every R in GL(d_h), the substitution (W_v, b_v, W_O) -> (W_v R, b_v R, R^-1 W_O) leaves the function intact, and makes the dominant direction v_1(W_O^(h)) a tempting static proxy for pruning, interpretation or routing. We prove that this readout is not identifiable: its orbit under the gauge is the full unit sphere of the row space, and no admissible similarity threshold on it admits a positive functional certified radius. With a non-degenerate spectrum, only the conformal orthogonal class leaves it invariant for every W_O, and every invariant readout of W_O alone factors through its row space. The consequence is measured: the pair that weight-based pruning declares most redundant changes under generic reparametrisation in more than 90 % of cases on a ViT and —by the same closed form, without training— on a language transformer. In the gauge training leaves, the factorisation approaches balance without the decisions coinciding. An angular probe that separates the directions up to the simplex threshold produces no detectable functional cost; the hard imposition does. The response signature v_1(C_h^P), probe-conditioned and gauge-invariant, measures functional diversity per head. Code, data and demo with DOIs.
+
+--- párrafo 2 ---
+New in v7.0: the theory is closed (uniform uniqueness of the harmless class, corollary on the quotient of W_O by the gauge, stationarity proof of the balanced-point lemma, full pairwise angle range in the orbit proposition); three new pre-registered experiments (E0: distance of every sampled gauge to the harmless class; E1: random-pruning null of 100 draws per seed; E2: head identity across probe halves); the training protocol is tabulated; citations in author-year form; positioning against the characterisation of the Transformer gauge group by Wang and Wang (PMLR 282).
+
+--- párrafo 3 ---
+Code repository: https://github.com/mmunozpl/angular-separation-vit
+CSV results: https://doi.org/10.57967/hf/9743
+Reproduction checkpoints: https://doi.org/10.57967/hf/9742
+Interactive demo: https://huggingface.co/spaces/ManPla/angular-separation-vit-demo
+Author's site: manpla.net

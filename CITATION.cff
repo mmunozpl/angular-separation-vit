@@ -3,30 +3,30 @@ message: >-
   Si utiliza este software, por favor cítelo como se indica a
   continuación.
 title: >-
-  Same function, different pruning: the dominant direction of W_O
-  under free, soft, and hard intervention
+  The dominant direction of W_O is not identifiable: gauge orbit,
+  zero certified radius, and consequences for pruning
 abstract: >-
-  Code and measurement scripts for a study of the value-output gauge
-  in Vision Transformer attention heads. The dominant direction of a
-  head's output projection, v1(W_O), is the cheapest static readout
-  available for pruning redundant heads, interpreting their role, or
-  routing information between them; this work closes that route
-  before it spreads. The direction is not identifiable under the
-  value-output gauge: it carries a certified radius of zero, and the
-  pruning decision it produces changes under generic
-  reparametrization in more than 90% of cases - on a vision-finetuned
-  ViT and, by the same closed form and without any training, on a
-  pretrained language transformer. In the gauge training leaves, with
-  none injected, the factorization moves toward balance - the weight
-  reading aligns with the identifiable object to within 18-35 degrees
-  - without the two decisions coming to coincide: the most redundant
-  pair differs in 37-44% of layers. As an instrument, the
-  gauge-invariant response signature v1(C_h^P) measures functional
-  diversity without gauge ambiguity, and the coupling between that
-  geometry and the function is one-directional across a soft probe and a
-  hard variant. Results are established
-  on ViT-B/16 (five seeds), contrasted on ViT-L/16 and a frozen
-  DINOv2, and extended without training to Pythia-410M.
+  Code, measurement scripts and pre-registrations for a study of the
+  value-output gauge in Transformer attention heads. The value-output
+  factorisation of an attention head is not unique: for every R in GL(d_h), the substitution (W_v, b_v, W_O) -> (W_v R, b_v R, R^-1 W_O) leaves
+  the function intact, and makes the dominant direction v_1(W_O^(h)) a
+  tempting static proxy for pruning, interpretation or routing. We
+  prove that this readout is not identifiable: its orbit under the
+  gauge is the full unit sphere of the row space, and no admissible
+  similarity threshold on it admits a positive functional certified
+  radius. With a non-degenerate spectrum, only the conformal
+  orthogonal class leaves it invariant for every W_O, and every
+  invariant readout of W_O alone factors through its row space. The
+  consequence is measured: the pair that weight-based pruning declares
+  most redundant changes under generic reparametrisation in more than
+  90 % of cases on a ViT and —by the same closed form, without
+  training— on a language transformer. In the gauge training leaves,
+  the factorisation approaches balance without the decisions
+  coinciding. An angular probe that separates the directions up to the
+  simplex threshold produces no detectable functional cost; the hard
+  imposition does. The response signature v_1(C_h^P),
+  probe-conditioned and gauge-invariant, measures functional diversity
+  per head. Code, data and demo with DOIs.
 type: software
 authors:
   - given-names: Manuel
@@ -36,8 +36,8 @@ authors:
 # concept DOI: resuelve siempre a la ultima version, que es
 # lo que debe hacer el boton «Cite this repository»
 doi: 10.5281/zenodo.21630534
-version: v6.0
-date-released: "2026-08-11"
+version: v7.0
+date-released: "2026-09-22"
 license: Apache-2.0
 keywords:
   - vision transformer
@@ -49,3 +49,6 @@ keywords:
   - value-output circuit
   - gauge canonicalization
   - static invariant
+  - gauge orbit
+  - certified radius
+  - pre-registration

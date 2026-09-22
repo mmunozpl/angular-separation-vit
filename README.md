@@ -1,29 +1,14 @@
-# Same function, different pruning
+# The dominant direction of W_O is not identifiable
 
-Reference implementation of the preprint *Same function, different
-pruning: the dominant direction of $W_O$ under free, soft, and hard
-intervention* (ES: *Dos modelos idénticos, dos podas distintas: la
-dirección dominante de $W_O$ bajo intervención libre, suave y dura*).
+Reference implementation of the manuscript *The dominant direction of $W_O$ is not identifiable: gauge orbit, zero certified radius, and consequences for pruning* (ES: *La dirección dominante de $W_O$ no es identificable: órbita de gauge, radio certificado nulo y consecuencias para la poda*).
 
-Reading the geometry of an attention head's output projection is the
-cheapest proxy imaginable for its role: taking the dominant direction
-$v_1(W_O)$ to prune redundant heads, interpret them, or route
-information needs no forwards and no gradients. This work closes that
-route before it spreads, showing that direction is not identifiable —a gauge freedom of the value-output
-sector displaces it at will without touching the function—, that this
-non-identifiability has a measurable consequence (the pruning decision
-it produces changes under generic reparametrization in more than 90% of
-cases, both on a vision-finetuned ViT and on a pretrained language
-transformer, without any training; and in the gauge training leaves,
-with none injected, the two decisions still fail to coincide), and that the coupling between that geometry and the
-function is one-directional: a probe that angularly separates it up
-to the simplex does not move the function, but imposing that same
-separation by construction does damage it. As the correct instrument,
-this work proposes the gauge-invariant response signature $v_1(C_h^P)$.
+The value-output factorisation of an attention head is not unique: for every $R\in GL(d_h)$, the substitution $(W_v,b_v,W_O)\to(W_vR,b_vR,R^{-1}W_O)$ leaves the function intact, and makes the dominant direction $v_1(W_O^{(h)})$ a tempting static proxy for pruning, interpretation or routing. We prove that this readout is not identifiable: its orbit under the gauge is the full unit sphere of the row space, and no admissible similarity threshold on it admits a positive functional certified radius. With a non-degenerate spectrum, only the conformal orthogonal class leaves it invariant for every $W_O$, and every invariant readout of $W_O$ alone factors through its row space. The consequence is measured: the pair that weight-based pruning declares most redundant changes under generic reparametrisation in more than $90$ % of cases on a ViT and —by the same closed form, without training— on a language transformer. In the gauge training leaves, the factorisation approaches balance without the decisions coinciding. An angular probe that separates the directions up to the simplex threshold produces no detectable functional cost; the hard imposition does. The response signature $v_1(C_h^P)$, probe-conditioned and gauge-invariant, measures functional diversity per head. Code, data and demo with DOIs.
 
-Code and measurement scripts are published here; the CSVs backing
-every table and the reproduction checkpoints are published separately
-on Hugging Face (see `## Data and weights` below).
+Code and measurement scripts are published here, with the
+pre-registration of every experiment under [`prereg/`](prereg/); the
+CSVs backing every table and the reproduction checkpoints are
+published separately on Hugging Face (see `## Data and weights`
+below).
 
 > Author's site: [manpla.net](https://manpla.net/en/about) · publications: [manpla.net/en/papers](https://manpla.net/en/papers)
 
@@ -88,6 +73,8 @@ src/
   viz/
     sphere.py    # 2D/3D projections of spherical codes
 scripts/   # one entry point per paper result — see Usage below
+prereg/    # pre-registration of every experiment, committed before running it
+CHANGELOG.md
 tests/     # pytest suite (attention, codes, losses, SVD fallback/GPU)
 archivo/   # closed lines of work kept as process evidence, not the
            # live pipeline: the discarded detection contribution,
@@ -140,6 +127,23 @@ python scripts/poda_criterio.py
 python scripts/inertia_read.py
 python scripts/dura_cost_read.py
 
+# E0 — d(R) of eq. (2) on every sampled gauge — tab:gauge (column d(R))
+python scripts/gauge_dR.py
+
+# E1 — random-pruning null, 100 draws per seed — tab:poda (percentile column)
+python scripts/poda_nulo.py
+
+# E2 — head identity across probe halves — tab:identidad
+python scripts/identidad_mitades.py
+
+# balanced point of the value-output sector (lemma checks) and signature radius
+python scripts/punto_balanceado.py
+python scripts/radio_firma.py
+
+# B1/B2 — decision-instability curve vs. gauge strength; probe-size curve
+python scripts/curva_inestabilidad.py --disp cpu
+python scripts/build_probe_anidado.py && python scripts/curva_sonda.py
+
 # tests
 pytest tests/ -q
 ```
@@ -161,19 +165,19 @@ offers a "Cite this repository" button, generated from
 [CITATION.cff](CITATION.cff)):
 
 ```bibtex
-@software{munozpla2026samefunctiondifferentpruning,
+@software{munozpla2026dominantdirection,
   author  = {Muñoz Plá, Manuel},
-  title   = {Same function, different pruning: the dominant direction
-             of W_O under free, soft, and hard intervention},
+  title   = {The dominant direction of W_O is not identifiable: gauge
+             orbit, zero certified radius, and consequences for pruning},
   year    = {2026},
-  version = {v6.0},
+  version = {v7.0},
   doi     = {10.5281/zenodo.21630534},
   url     = {https://github.com/mmunozpl/angular-separation-vit}
 }
 ```
 
-The paper itself will get its own arXiv-based entry once the
-submission is assigned a public identifier.
+The manuscript itself will get its own entry once the submission is
+assigned a public identifier.
 
 ## License
 
